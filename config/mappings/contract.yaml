@@ -1,0 +1,81 @@
+# =============================================================================
+# Word 合同 记账规则
+# =============================================================================
+# 重要：合同本身不是会计事项，签了合同并不产生记账义务。
+# 因此默认情况下合同只登记「合同台账」，不生成凭证。
+#
+# 只有当合同正文里明确写了「已收款」「已付款」这类已发生事实
+# （提取器会置 field.settled = true）时，才会按下述规则生成分录。
+#
+# 提取器写入的字段：
+#   contractNo  合同编号      contractName 合同名称
+#   partyA/partyB 甲方/乙方    role 我方角色（supplier 我方是乙方收款方 / purchaser 我方是甲方付款方）
+#   taxRate     税率          settlement 结算方式     term 履约期限
+#   milestones  付款节点       prepaymentRatio 预付款比例   retentionRatio 质保金比例
+#   settled     款项是否已收付  amountRaw 合同原文金额
+#
+# 合同金额大小写不一致时，提取器以大写为准并告警。
+# =============================================================================
+
+name: 合同台账规则
+
+rules:
+  # --------------------- 一、我方作为乙方（收入方） ---------------------
+
+  - id: contract-revenue-settled
+    desc: 销售/服务合同且款项已收
+    kinds: [contract]
+    priority: 800
+    when:
+      fields: { settled: true, role: supplier }
+    then:
+      entries:
+        - { side: debit, account: "1122", amount: total, summary: "合同已开票/已收：{summary}", auxiliary: { customer: "{counterparty}" } }
+        - { side: credit, account: "6001.02", amount: net, summary: "合同收入" }
+        - { side: credit, account: "2221.01.02", amount: tax, summary: "销项税额" }
+    warn: "该分录依据合同正文的「已收款/已开票」字样生成，请与实际开票和银行流水核对，避免重复记账"
+
+  - id: contract-advance-received
+    desc: 合同约定已收到预收款
+    kinds: [contract]
+    priority: 810
+    when:
+      fields: { settled: true, role: supplier }
+      fieldContains: { settlement: [预收, 预付, 定金, 首付] }
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total, summary: "合同预收款：{summary}" }
+        - { side: credit, account: "2203", amount: total, summary: "预收合同款", auxiliary: { customer: "{counterparty}" } }
+    warn: "预收款在收入确认条件满足前不得确认收入，请按履约进度分期确认收入"
+
+  # --------------------- 二、我方作为甲方（支出方） ---------------------
+
+  - id: contract-cost-settled
+    desc: 采购/服务合同且款项已付
+    kinds: [contract]
+    priority: 800
+    when:
+      fields: { settled: true, role: purchaser }
+    then:
+      entries:
+        - { side: debit, account: "1901", amount: net, summary: "合同已付款（待确认科目）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付合同款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "合同不含具体的存货/费用科目信息，已暂挂 1901；请按发票内容调整到 1403/1601/6602 等科目"
+
+  - id: contract-advance-paid
+    desc: 合同约定已支付预付款
+    kinds: [contract]
+    priority: 810
+    when:
+      fields: { settled: true, role: purchaser }
+      fieldContains: { settlement: [预付, 预收, 定金, 首付] }
+    then:
+      entries:
+        - { side: debit, account: "1123", amount: total, summary: "合同预付款：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "1002", amount: total }
+    warn: "预付款项应在取得发票并验收后转入存货或费用科目"
+
+  # 说明：合同若没有「已收付」表述，则不会命中任何规则。
+  # 处理逻辑在 src/ledger/voucher.ts 中：仅登记合同台账、不生成凭证，
+  # 并在处理报告中以 info 级别提示。这是刻意设计，不是漏配规则。

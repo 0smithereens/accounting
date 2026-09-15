@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支连续推送时取消上一次未完成的运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 安全检查：确保敏感目录没有被误提交
+  # 这是本仓库特有的一步。本项目在处理过程中会在 out/ 下生成浏览器配置、
+  # 导出凭证等文件，一旦被跟踪就会泄露凭据与真实账务数据。
+  # ---------------------------------------------------------------------------
+  guard:
+    name: 敏感文件检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查是否有敏感路径被跟踪
+        run: |
+          set -e
+          patterns='^(out/|node_modules/|\.npm-cache/|.*-profile/|edge-profile/|chrome-profile/|secrets/|credentials/|\.env$)'
+          tracked=$(git ls-files | grep -E "$patterns" || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::以下敏感路径被 git 跟踪，请从仓库中移除："
+            echo "$tracked"
+            exit 1
+          fi
+          echo "✓ 未发现被跟踪的敏感路径"
+
+      - name: 检查是否误提交大文件
+        shell: bash
+        run: |
+          git ls-files | while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            size=$(wc -c < "$f")
+            if [ "$size" -gt 5242880 ]; then
+              echo "::warning::$f 超过 5MB（$((size/1024/1024))MB），请确认是否需要提交"
+            fi
+          done
+          echo "✓ 大文件检查完成"
+
+  # ---------------------------------------------------------------------------
+  # 测试矩阵：两个平台 × 两个 Node 版本
+  # Windows 必须测，因为目标用户主要用 Windows（银行导出、Excel COM 转换）
+  # ---------------------------------------------------------------------------
+  test:
+    name: 测试 (${{ matrix.os }} / Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22.18', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 配置校验
+        run: npm run check
+
+      - name: 单元测试与端到端测试
+        run: npm test
+
+      - name: 生成样例单据
+        run: npm run samples
+
+      - name: 用样例跑一遍完整记账流程
+        run: node src/cli.ts samples --period 2024-01 --out out/ci-check.xlsx
+
+      - name: 校验导出的凭证（借贷必须平衡）
+        shell: bash
+        run: |
+          set -e
+          node -e "
+          import('./src/export/voucher-excel.ts').then(async () => {
+            const ExcelJS = (await import('exceljs')).default;
+            const wb = new ExcelJS.Workbook();
+            await wb.xlsx.readFile('out/ci-check.xlsx');
+            const ws = wb.getWorksheet('科目汇总表');
+            if (!ws) { console.error('缺少「科目汇总表」工作表'); process.exit(1); }
+            const last = ws.getRow(ws.rowCount);
+            const status = String(last.getCell(7).value ?? '');
+            if (!status.includes('试算平衡')) {
+              console.error('试算不平衡：' + status);
+              process.exit(1);
+            }
+            console.log('✓ 试算平衡：' + status);
+          }).catch((e) => { console.error(e); process.exit(1); });
+          "
+
+  # ---------------------------------------------------------------------------
+  # Web 界面冒烟测试：能启动、能响应
+  # ---------------------------------------------------------------------------
+  web-smoke:
+    name: Web 界面冒烟测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: 启动服务并请求首页与配置接口
+        run: |
+          set -e
+          node src/web/server.ts --port 8787 &
+          SERVER_PID=$!
+          # 等待启动
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8787/api/config > /dev/null; then break; fi
+            sleep 0.5
+          done
+          echo "--- /api/config ---"
+          curl -sf http://127.0.0.1:8787/api/config | head -c 400
+          echo ""
+          echo "--- 首页状态码 ---"
+          curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8787/
+          curl -sf http://127.0.0.1:8787/ > /dev/null
+          curl -sf http://127.0.0.1:8787/app.js > /dev/null
+          curl -sf http://127.0.0.1:8787/style.css > /dev/null
+          kill $SERVER_PID
+          echo "✓ Web 界面冒烟测试通过"

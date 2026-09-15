@@ -1,0 +1,292 @@
+# =============================================================================
+# 报销单 / 费用明细 记账规则
+# =============================================================================
+# 提取器会把「费用类别」规范化后写入 field.category，可取值：
+#   差旅费 业务招待费 办公费 水电费 租赁费 通讯费 运输费 车辆使用费 会议费
+#   广告宣传费 咨询顾问费 研发费用 职工薪酬及福利 折旧摊销 财务费用 修理费 其他
+#
+# 关于「有/无进项税额」的处理（重要）：
+#   报销单若不含可抵扣税额，提取器把 netAmount/taxAmount 留空，
+#   此时 amount: net 取全额、amount: tax 取 0，税额分录会因为金额为 0 被自动删除。
+#   因此每个类别只需要写一条规则，就能同时适配「有票抵扣」和「无票全额」两种情况。
+#
+# 科目归属默认按「管理费用」；销售部/市场部的费用会用更高优先级的规则改记「销售费用」。
+# =============================================================================
+
+name: 报销单规则
+
+rules:
+  # ------------------- 一、暂未付款的报销（挂其他应付款） -------------------
+
+  - id: expense-unpaid
+    desc: 报销已审批但尚未付款
+    kinds: [expense]
+    priority: 700
+    when:
+      summary: [未付款, 尚未支付, 待付款, 挂账, 未支付, 暂未支付]
+    then:
+      entries:
+        - { side: debit, account: "6602.17", amount: net, summary: "{summary}" }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "2241.04", amount: total, summary: "应付员工报销款", auxiliary: { employee: "{field.employee}" } }
+    warn: "已按「暂未付款」处理，费用挂 6602.17；请按费用类别调整借方明细科目"
+
+  # ------------------------- 二、销售费用专项 -------------------------
+
+  - id: expense-sales-travel
+    desc: 销售部差旅费
+    kinds: [expense]
+    priority: 620
+    when:
+      fieldContains: { category: [差旅费], department: [销售部, 市场部, 销售, 市场, 商务部, 营销部] }
+    then:
+      entries:
+        - { side: debit, account: "6601.03", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-sales-entertainment
+    desc: 销售部业务招待费
+    kinds: [expense]
+    priority: 620
+    when:
+      fieldContains: { category: [业务招待费], department: [销售部, 市场部, 销售, 市场, 商务部, 营销部] }
+    then:
+      entries:
+        - { side: debit, account: "6601.04", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-sales-office
+    desc: 销售部办公费
+    kinds: [expense]
+    priority: 620
+    when:
+      fieldContains: { category: [办公费], department: [销售部, 市场部, 销售, 市场, 商务部, 营销部] }
+    then:
+      entries:
+        - { side: debit, account: "6601.05", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-sales-ad
+    desc: 广告宣传费
+    kinds: [expense]
+    priority: 610
+    when:
+      fieldContains: { category: [广告宣传费] }
+    then:
+      entries:
+        - { side: debit, account: "6601.06", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-sales-freight
+    desc: 运输费
+    kinds: [expense]
+    priority: 610
+    when:
+      fieldContains: { category: [运输费] }
+    then:
+      entries:
+        - { side: debit, account: "6601.07", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  # --------------------------- 三、管理费用明细 ---------------------------
+
+  - id: expense-travel
+    desc: 差旅费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [差旅费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.04", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-entertainment
+    desc: 业务招待费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [业务招待费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.07", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-office
+    desc: 办公费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [办公费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.03", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-utilities
+    desc: 水电费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [水电费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.05", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-rent
+    desc: 租赁费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [租赁费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.06", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+    warn: "跨年度租金应先记 1801 长期待摊费用再分期摊销"
+
+  - id: expense-communication
+    desc: 通讯费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [通讯费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.08", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-vehicle
+    desc: 车辆使用费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [车辆使用费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.13", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-meeting
+    desc: 会议费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [会议费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.11", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-consulting
+    desc: 咨询顾问费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [咨询顾问费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.10", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-rd
+    desc: 研发费用
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [研发费用] }
+    then:
+      entries:
+        - { side: debit, account: "6602.18", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+    warn: "若符合资本化条件，应改记 5301.02 研发支出-资本化支出"
+
+  - id: expense-welfare
+    desc: 职工薪酬及福利
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [职工薪酬及福利] }
+    then:
+      entries:
+        - { side: debit, account: "6602.12", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-depreciation
+    desc: 折旧摊销
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [折旧摊销] }
+    then:
+      entries:
+        - { side: debit, account: "6602.09", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+    warn: "折旧摊销不应通过银行存款支付，请改为 贷 1602 累计折旧 / 1702 累计摊销"
+
+  - id: expense-financial
+    desc: 财务费用类支出
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [财务费用] }
+    then:
+      entries:
+        - { side: debit, account: "6603.02", amount: net, summary: "{summary}" }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  - id: expense-repair
+    desc: 修理费
+    kinds: [expense]
+    priority: 520
+    when:
+      fieldContains: { category: [修理费] }
+    then:
+      entries:
+        - { side: debit, account: "6602.14", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+
+  # ----------------------------- 四、兜底 -----------------------------
+
+  - id: expense-fallback
+    desc: 未分类费用（兜底）
+    kinds: [expense]
+    priority: 100
+    when:
+      fieldContains: { category: [其他] }
+    then:
+      entries:
+        - { side: debit, account: "6602.17", amount: net, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax }
+        - { side: credit, account: "{field.creditAccount}", amount: total }
+    warn: "费用类别未能归入具体明细科目，已记 6602.17 管理费用-其他，建议在报销单中填写规范的「费用类别」"
+
+  - id: expense-unknown-category
+    desc: 出现未配置的费用类别
+    kinds: [expense]
+    priority: 90
+    when:
+      fieldContains: { category: [__NEVER_MATCH__] }
+    then:
+      entries:
+        - { side: debit, account: "6602.17", amount: net, summary: "{summary}" }
+        - { side: credit, account: "{field.creditAccount}", amount: total }

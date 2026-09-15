@@ -1,0 +1,275 @@
+# =============================================================================
+# 发票台账 记账规则
+# =============================================================================
+# 提取器会在单据上写入这些字段，规则用 fieldContains / fields 匹配：
+#   invoiceSide    input 进项（我们采购） / output 销项（我们销售） / unknown
+#   deductible     yes 可抵扣进项税（专用发票） / no 不可抵扣（普通发票、免税）
+#   goodsName      货物或服务名称
+#   invoiceType    发票种类
+#   taxRate        税率
+#
+# 进项可抵扣时：借 成本费用/存货（不含税）+ 借 进项税额，贷 应付账款（价税合计）
+# 进项不可抵扣时：借 成本费用/存货（价税合计全额），贷 应付账款
+#
+# 注意：销项发票默认先挂「应收账款」，若已收款请把贷方改成 1002，
+#      或把该张发票的收款状态字段加入规则条件。
+# =============================================================================
+
+name: 发票台账规则
+
+rules:
+  # ============================ 一、销项发票 ============================
+
+  - id: invoice-output-goods
+    desc: 销项-商品销售
+    kinds: [invoice]
+    priority: 1000
+    when:
+      fields: { invoiceSide: output }
+      fieldContains:
+        goodsName: [货物, 材料, 商品, 产品, 设备, 机器, 机械, 电子, 电脑, 办公用品, 耗材, 配件, 零件, 家具, 电器, 五金, 化工, 食品, 饮料, 服装, 元器件, 仪器, 仪表, 工具, 包装, 软件产品]
+    then:
+      entries:
+        - { side: debit, account: "1122", amount: total, summary: "销售开票：{summary}", auxiliary: { customer: "{counterparty}" } }
+        - { side: credit, account: "6001.01", amount: net, summary: "商品销售收入" }
+        - { side: credit, account: "2221.01.02", amount: tax, summary: "销项税额" }
+
+  - id: invoice-output-service
+    desc: 销项-服务收入
+    kinds: [invoice]
+    priority: 990
+    when:
+      fields: { invoiceSide: output }
+      fieldContains:
+        goodsName: [服务, 咨询, 技术, 信息, 软件, 维护, 设计, 广告, 会议, 展览, 运输, 货运, 物流, 建筑, 工程, 安装, 施工, 装修, 租赁, 物业, 培训, 技术服务]
+    then:
+      entries:
+        - { side: debit, account: "1122", amount: total, summary: "服务开票：{summary}", auxiliary: { customer: "{counterparty}" } }
+        - { side: credit, account: "6001.02", amount: net, summary: "服务收入" }
+        - { side: credit, account: "2221.01.02", amount: tax, summary: "销项税额" }
+
+  - id: invoice-output-generic
+    desc: 销项-其他（兜底）
+    kinds: [invoice]
+    priority: 980
+    when:
+      fields: { invoiceSide: output }
+    then:
+      entries:
+        - { side: debit, account: "1122", amount: total, summary: "销售开票：{summary}", auxiliary: { customer: "{counterparty}" } }
+        - { side: credit, account: "6001", amount: net, summary: "主营业务收入（待确认明细）" }
+        - { side: credit, account: "2221.01.02", amount: tax, summary: "销项税额" }
+    warn: "未能判断收入类型，已按默认明细科目 6001.01 商品销售收入入账，请按实际业务确认是否应改记 6001.02 服务收入或其他业务收入"
+
+  # ======================= 二、进项发票（可抵扣） =======================
+
+  - id: invoice-input-fixed-asset
+    desc: 进项-固定资产（专票）
+    kinds: [invoice]
+    priority: 950
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [设备, 机器, 机械, 生产线, 服务器, 电脑, 计算机, 空调, 车辆, 汽车, 办公家具, 固定资产, 仪器, 仪表, 起重机, 叉车]
+    then:
+      entries:
+        - { side: debit, account: "1601.02", amount: net, summary: "购入设备：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付设备款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "已默认记入 1601.02 机器设备，若为房屋/车辆/电子设备/办公家具请调整到 1601.01/03/04/05"
+
+  - id: invoice-input-goods
+    desc: 进项-货物/材料（专票）
+    kinds: [invoice]
+    priority: 940
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [货物, 材料, 原材料, 钢材, 水泥, 元器件, 五金, 化工, 柴油, 汽油, 煤炭, 包装, 耗材, 配件, 零件, 商品, 产品, 办公用品, 日用品]
+    then:
+      entries:
+        - { side: debit, account: "1403", amount: net, summary: "采购材料：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付货款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "已默认记入 1403 原材料，贸易企业购入待售商品应改为 1405 库存商品"
+
+  - id: invoice-input-service-office
+    desc: 进项-办公用品（专票）
+    kinds: [invoice]
+    priority: 945
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [办公用品, 文具, 耗材, 打印, 复印, 纸张, 办公设备配件, 硒鼓, 墨盒]
+    then:
+      entries:
+        - { side: debit, account: "6602.03", amount: net, summary: "采购办公用品：{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付办公用品款", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-service-travel
+    desc: 进项-差旅相关（住宿/餐饮/交通票）
+    kinds: [invoice]
+    priority: 938
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [住宿服务, 住宿费, 餐饮服务, 机票, 航空运输, 火车票, 铁路运输, 客运, 差旅, 会议服务, 会务费]
+    then:
+      entries:
+        - { side: debit, account: "6602.04", amount: net, summary: "差旅支出：{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付差旅款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "已默认记入 6602.04 差旅费；餐饮招待性质应改记 6602.07 业务招待费（且进项税不得抵扣）"
+
+  - id: invoice-input-service-transport
+    desc: 进项-运输/物流/快递
+    kinds: [invoice]
+    priority: 937
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [运输服务, 货运, 物流, 快递, 装卸, 搬运, 配送, 仓储服务]
+    then:
+      entries:
+        - { side: debit, account: "6602.19", amount: net, summary: "运输物流费：{summary}" }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付运输费", auxiliary: { supplier: "{counterparty}" } }
+    warn: "销售环节发生的运费应改记 6601.07 销售费用-运输费"
+
+  - id: invoice-input-service-utilities
+    desc: 进项-水电燃气物业
+    kinds: [invoice]
+    priority: 936
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [电力, 电费, 水费, 自来水, 燃气, 天然气, 供暖, 物业费, 能源费, 热力]
+    then:
+      entries:
+        - { side: debit, account: "6602.05", amount: net, summary: "水电物业费：{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付水电费", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-service-rent
+    desc: 进项-租赁费
+    kinds: [invoice]
+    priority: 935
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [租赁服务, 租金, 房租, 场地租赁, 房屋租赁, 不动产租赁, 设备租赁]
+    then:
+      entries:
+        - { side: debit, account: "6602.06", amount: net, summary: "租赁费：{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付租赁费", auxiliary: { supplier: "{counterparty}" } }
+    warn: "跨年度租金应先记 1801 长期待摊费用，再按受益期摊销"
+
+  - id: invoice-input-service
+    desc: 进项-服务费用（专票）
+    kinds: [invoice]
+    priority: 930
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+      fieldContains:
+        goodsName: [服务, 咨询, 顾问, 技术, 信息, 软件, 维护, 设计, 广告, 会议, 展览, 住宿, 餐饮, 运输, 货运, 物流, 快递, 建筑, 工程, 安装, 施工, 装修, 租赁, 物业, 仓储, 培训, 审计, 法律, 会计, 税务, 人力, 劳务, 保险]
+    then:
+      entries:
+        - { side: debit, account: "6602.10", amount: net, summary: "接受服务：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付服务款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "已默认记入 6602.10 咨询顾问费，请按服务性质调整到差旅/办公/广告/运输等明细科目"
+
+  - id: invoice-input-generic
+    desc: 进项-未分类（专票兜底）
+    kinds: [invoice]
+    priority: 920
+    when:
+      fields: { invoiceSide: input, deductible: "yes" }
+    then:
+      entries:
+        - { side: debit, account: "1901", amount: net, summary: "待确认采购：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: debit, account: "2221.01.01", amount: tax, summary: "进项税额" }
+        - { side: credit, account: "2202", amount: total, summary: "应付账款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "未能判断采购内容，不含税金额已挂 1901 待处理，请人工确认存货或费用科目"
+
+  # ====================== 三、进项发票（不可抵扣） ======================
+
+  - id: invoice-input-nondeductible-asset
+    desc: 进项-固定资产（普票，不可抵扣）
+    kinds: [invoice]
+    priority: 890
+    when:
+      fields: { invoiceSide: input, deductible: "no" }
+      fieldContains:
+        goodsName: [设备, 机器, 机械, 生产线, 服务器, 电脑, 计算机, 空调, 车辆, 汽车, 办公家具, 固定资产, 仪器, 仪表]
+    then:
+      entries:
+        - { side: debit, account: "1601.02", amount: total, summary: "购入设备（普票全额）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "2202", amount: total, summary: "应付设备款", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-nondeductible-office
+    desc: 进项-办公用品（普票，不可抵扣）
+    kinds: [invoice]
+    priority: 885
+    when:
+      fields: { invoiceSide: input, deductible: "no" }
+      fieldContains:
+        goodsName: [办公用品, 文具, 耗材, 打印, 复印, 纸张, 硒鼓, 墨盒]
+    then:
+      entries:
+        - { side: debit, account: "6602.03", amount: total, summary: "采购办公用品（普票全额）：{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2202", amount: total, summary: "应付办公用品款", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-nondeductible-goods
+    desc: 进项-货物/材料（普票，不可抵扣）
+    kinds: [invoice]
+    priority: 880
+    when:
+      fields: { invoiceSide: input, deductible: "no" }
+      fieldContains:
+        goodsName: [货物, 材料, 原材料, 钢材, 水泥, 元器件, 五金, 化工, 耗材, 配件, 零件, 商品, 产品, 办公用品, 日用品]
+    then:
+      entries:
+        - { side: debit, account: "1403", amount: total, summary: "采购材料（普票全额）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "2202", amount: total, summary: "应付货款", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-nondeductible-service
+    desc: 进项-服务费用（普票，不可抵扣）
+    kinds: [invoice]
+    priority: 870
+    when:
+      fields: { invoiceSide: input, deductible: "no" }
+      fieldContains:
+        goodsName: [服务, 咨询, 顾问, 技术, 信息, 软件, 维护, 设计, 广告, 会议, 展览, 住宿, 餐饮, 运输, 货运, 物流, 快递, 建筑, 工程, 安装, 施工, 装修, 租赁, 物业, 仓储, 培训, 审计, 法律, 会计, 税务, 人力, 劳务, 保险]
+    then:
+      entries:
+        - { side: debit, account: "6602.10", amount: total, summary: "接受服务（普票全额）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "2202", amount: total, summary: "应付服务款", auxiliary: { supplier: "{counterparty}" } }
+
+  - id: invoice-input-nondeductible-generic
+    desc: 进项-未分类（普票兜底）
+    kinds: [invoice]
+    priority: 860
+    when:
+      fields: { invoiceSide: input, deductible: "no" }
+    then:
+      entries:
+        - { side: debit, account: "1901", amount: total, summary: "待确认采购（普票全额）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "2202", amount: total, summary: "应付账款", auxiliary: { supplier: "{counterparty}" } }
+    warn: "普通发票不可抵扣进项税，已按全额计入待处理科目，请人工确认存货或费用科目"
+
+  # ========================= 四、无法判断方向 =========================
+
+  - id: invoice-unknown-side
+    desc: 无法判断进项/销项
+    kinds: [invoice]
+    priority: 300
+    when:
+      fields: { invoiceSide: unknown }
+    then:
+      entries:
+        - { side: debit, account: "1901", amount: total, summary: "待确认发票：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "1901", amount: total, summary: "待确认发票：{summary}" }
+    warn: "无法判断该发票是进项还是销项，请在 config/settings.yaml 的 companyNames 中填好本企业全称"

@@ -1,0 +1,127 @@
+# =============================================================================
+# 工资表 / 社保公积金 记账规则
+# =============================================================================
+# 工资表提取器会产出三类单据（field.stage 区分），对应三组规则：
+#   accrual                  计提：逐人一行，借 费用，贷 应付职工薪酬-工资
+#   payment                  发放：全表汇总一行，借 应付职工薪酬-工资，贷 银行存款/个税/社保/公积金
+#   employer-contribution    单位承担社保公积金：按部门汇总
+#
+# 工资的会计恒等式（提取器已校验，不平时会在报告里告警）：
+#   应发工资 = 实发工资 + 个人所得税 + 个人社保 + 个人公积金 + 其他扣款
+#
+# 金额为 0 的分录行会被自动删除，所以「不交个税」「不扣公积金」等情况不会产生空行。
+# =============================================================================
+
+name: 工资与社保规则
+
+rules:
+  # ========================= 一、发放（最高优先级） =========================
+
+  - id: payroll-payment
+    desc: 发放工资（含代扣个税、社保、公积金）
+    kinds: [payroll]
+    priority: 900
+    when:
+      fields: { stage: payment }
+    then:
+      entries:
+        - { side: debit, account: "2211.01", amount: total, summary: "发放工资：{summary}" }
+        - { side: credit, account: "1002", amount: "field.netPay", summary: "实发工资" }
+        - { side: credit, account: "2221.04", amount: "field.tax", summary: "代扣个人所得税" }
+        - { side: credit, account: "2241.01", amount: "field.socialInsurance", summary: "代扣个人社保" }
+        - { side: credit, account: "2241.02", amount: "field.housingFund", summary: "代扣个人公积金" }
+        - { side: credit, account: "2241.03", amount: "field.otherDeduction", summary: "其他扣款" }
+    warn: "代扣的社保/公积金需在实际上缴时从 2241.01/2241.02 转出，个税在实际申报缴纳时冲减 2221.04"
+
+  # ========================= 二、计提（分部门） =========================
+
+  - id: payroll-accrual-sales
+    desc: 计提销售人员工资
+    kinds: [payroll]
+    priority: 700
+    when:
+      fields: { stage: accrual }
+      fieldContains: { department: [销售部, 市场部, 销售, 市场, 商务部, 营销部, 客服部] }
+    then:
+      entries:
+        - { side: debit, account: "6601.01", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.01", amount: total, summary: "计提工资", auxiliary: { department: "{field.department}" } }
+
+  - id: payroll-accrual-production
+    desc: 计提生产人员工资
+    kinds: [payroll]
+    priority: 700
+    when:
+      fields: { stage: accrual }
+      fieldContains: { department: [生产部, 车间, 制造, 工厂, 生产线, 品质部, 品管部, 物流部, 仓储部, 工程部] }
+    then:
+      entries:
+        - { side: debit, account: "5101", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.01", amount: total, summary: "计提工资", auxiliary: { department: "{field.department}" } }
+    warn: "生产人员工资记入 5101 制造费用，月末需按工时或产量分配到 5001 生产成本"
+
+  - id: payroll-accrual-admin
+    desc: 计提管理人员工资（兜底）
+    kinds: [payroll]
+    priority: 600
+    when:
+      fields: { stage: accrual }
+    then:
+      entries:
+        - { side: debit, account: "6602.01", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.01", amount: total, summary: "计提工资", auxiliary: { department: "{field.department}" } }
+
+  # ==================== 三、单位承担的社保公积金 ====================
+
+  - id: payroll-employer-contribution-sales
+    desc: 销售部门单位承担社保公积金
+    kinds: [payroll]
+    priority: 550
+    when:
+      fields: { stage: employer-contribution }
+      fieldContains: { department: [销售部, 市场部, 销售, 市场, 商务部, 营销部] }
+    then:
+      entries:
+        - { side: debit, account: "6601.02", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.02", amount: "field.employerSocialInsurance", summary: "计提单位社保" }
+        - { side: credit, account: "2211.03", amount: "field.employerHousingFund", summary: "计提单位公积金" }
+
+  - id: payroll-employer-contribution-production
+    desc: 生产部门单位承担社保公积金
+    kinds: [payroll]
+    priority: 550
+    when:
+      fields: { stage: employer-contribution }
+      fieldContains: { department: [生产部, 车间, 制造, 工厂, 生产线, 品质部, 物流部] }
+    then:
+      entries:
+        - { side: debit, account: "5101", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.02", amount: "field.employerSocialInsurance", summary: "计提单位社保" }
+        - { side: credit, account: "2211.03", amount: "field.employerHousingFund", summary: "计提单位公积金" }
+
+  - id: payroll-employer-contribution-admin
+    desc: 管理部门单位承担社保公积金（兜底）
+    kinds: [payroll]
+    priority: 500
+    when:
+      fields: { stage: employer-contribution }
+    then:
+      entries:
+        - { side: debit, account: "6602.02", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.02", amount: "field.employerSocialInsurance", summary: "计提单位社保" }
+        - { side: credit, account: "2211.03", amount: "field.employerHousingFund", summary: "计提单位公积金" }
+
+  # ========================= 四、其他场景 =========================
+
+  - id: payroll-floating-population
+    desc: 劳务派遣/临时人员工资
+    kinds: [payroll]
+    priority: 800
+    when:
+      fields: { stage: accrual }
+      fieldContains: { department: [劳务, 派遣, 临时, 外包, 兼职] }
+    then:
+      entries:
+        - { side: debit, account: "6602.17", amount: total, summary: "{summary}", auxiliary: { department: "{field.department}" } }
+        - { side: credit, account: "2211.01", amount: total, summary: "计提劳务费" }
+    warn: "劳务派遣人员费用通常计入 6602.17 或按受益部门归集，并需取得劳务发票"

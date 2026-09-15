@@ -1,0 +1,117 @@
+name: 识别不准 / 记错科目
+description: 系统没有正确识别你的单据，或者生成的会计科目不对
+title: "[识别问题] "
+labels: ["识别问题"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！识别类问题需要一些具体信息才能定位。
+
+        **提交前请先做两件事：**
+
+        1. 运行下面的命令，它会把识别过程完整打印出来：
+
+           ```bash
+           node src/cli.ts explain 你的文件.xlsx
+           ```
+
+        2. **给输出脱敏**：把真实的公司名、账号、人名、金额替换掉。
+           表头结构和列名要保留，那是定位问题的关键。
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 单据类型
+      description: 出问题的是哪一类单据？
+      options:
+        - 银行流水 / 对账单
+        - 发票台账
+        - 报销单 / 费用明细
+        - 工资表 / 社保公积金
+        - Word 合同
+        - 无法识别类型（自动判断失败）
+    validations:
+      required: true
+
+  - type: textarea
+    id: headers
+    attributes:
+      label: 你的表头行（脱敏后）
+      description: 直接粘贴表格的第一行/表头行，用 | 分隔即可
+      placeholder: "交易日期 | 摘要 | 对方户名 | 借方发生额 | 贷方发生额 | 余额"
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: explain-output
+    attributes:
+      label: explain 命令的输出（脱敏后）
+      description: |
+        包含「表头结构打分」「工作表信息」「提取到的单据」几部分。
+        如果输出很长，只贴前 40 行也行。
+      placeholder: |
+        识别类型：银行流水/对账单
+        表头结构打分：
+          银行流水/对账单    0.974  █████████████████████████████
+          发票台账          0.599  ██████████████████
+        ...
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望的结果
+      description: 描述一下正确的识别/科目应该是什么
+      placeholder: |
+        期望「跨行汇款手续费 25.00」这笔识别为：
+        借 财务费用-手续费 25.00
+        贷 银行存款 25.00
+        实际识别成了：待处理财产损溢
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际发生的情况
+      description: 如果是科目记错，请贴上生成的凭证分录
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      description: 运行时输出里的版本，或 `git log -1 --format=%h`
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options: ["Windows", "macOS", "Linux"]
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js 版本
+      description: 运行 `node --version` 的结果
+      placeholder: "v24.20.0"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 确认
+      options:
+        - label: 我已经给所有真实的公司名、账号、人名、金额脱敏
+          required: true
+        - label: 我已经试过 `node src/cli.ts explain` 并附上了输出
+          required: true

@@ -1,0 +1,14 @@
+﻿blank_issues_enabled: false
+contact_links:
+  - name: 📖 使用说明（手把手操作手册）
+    url: https://github.com/your-org/accounting-automation/blob/main/使用说明.md
+    about: 安装、配置、Web 界面操作、常见问题排查都在这里
+  - name: 🤝 贡献指南
+    url: https://github.com/your-org/accounting-automation/blob/main/CONTRIBUTING.md
+    about: 想新增银行格式支持、加科目、改规则？先看这里
+  - name: 🔒 安全说明
+    url: https://github.com/your-org/accounting-automation/blob/main/SECURITY.md
+    about: 数据安全设计、已知风险、如何私密报告安全问题
+  - name: ❓ 常见问题 FAQ
+    url: https://github.com/your-org/accounting-automation/blob/main/使用说明.md#11-常见问题-faq
+    about: 数据会不会泄露、能不能识别图片发票、为什么银行存款对不上

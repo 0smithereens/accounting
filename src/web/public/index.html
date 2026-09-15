@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会计自动化记账系统</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">账</span>
+    <div>
+      <h1>会计自动化记账</h1>
+      <p id="configLine">正在读取配置…</p>
+    </div>
+  </div>
+  <div id="configWarn" class="warn-badge hidden"></div>
+</header>
+
+<main>
+  <!-- ================= 上传区 ================= -->
+  <section class="card">
+    <h2>1. 上传单据</h2>
+    <p class="hint">
+      支持银行流水/对账单、发票台账、报销单/费用明细、工资表（<code>.xlsx</code> / <code>.csv</code>），
+      以及采购/销售合同（<code>.docx</code>）。文件只在本机处理，不会上传到任何服务器。
+    </p>
+
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="选择或拖入文件">
+      <div class="dropzone-inner">
+        <div class="dz-icon">＋</div>
+        <div class="dz-text">把 Excel / Word 文件拖到这里，或点击选择</div>
+        <div class="dz-sub">可一次选择多个文件，系统会自动识别每个文件的单据类型</div>
+      </div>
+      <input id="fileInput" type="file" multiple accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt,.docx,.docm" hidden>
+    </div>
+
+    <ul id="fileList" class="file-list"></ul>
+
+    <div class="options">
+      <label>
+        <span>会计期间</span>
+        <input id="period" type="month" title="用于日期缺失的单据，如工资表">
+      </label>
+      <label>
+        <span>单据类型</span>
+        <select id="kind">
+          <option value="auto">自动识别（推荐）</option>
+          <option value="bank">银行流水 / 对账单</option>
+          <option value="invoice">发票台账</option>
+          <option value="expense">报销单 / 费用明细</option>
+          <option value="payroll">工资表 / 社保公积金</option>
+          <option value="contract">Word 合同</option>
+        </select>
+      </label>
+      <label class="checkbox">
+        <input id="dedup" type="checkbox" checked>
+        <span>跨单据去重<em>（防止银行流水与工资表重复记账）</em></span>
+      </label>
+      <label class="checkbox">
+        <input id="autoBalance" type="checkbox" checked>
+        <span>自动配平<em>（借贷不平时差额挂待处理科目）</em></span>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="runBtn" class="primary" disabled>开始记账</button>
+      <button id="clearBtn" class="ghost" disabled>清空</button>
+    </div>
+    <div id="progress" class="progress hidden"><div class="spinner"></div><span>正在识别与生成凭证…</span></div>
+    <div id="errorBox" class="error-box hidden"></div>
+  </section>
+
+  <!-- ================= 结果区 ================= -->
+  <section id="resultSection" class="hidden">
+    <div class="card">
+      <h2>2. 处理结果</h2>
+      <div id="statsGrid" class="stats-grid"></div>
+      <div class="actions">
+        <button id="downloadBtn" class="primary">下载记账凭证 Excel</button>
+        <span class="hint inline">包含 记账凭证 / 科目汇总表 / 单据台账 / 问题与待办 / 导入模板 / 处理说明</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="vouchers" role="tab">记账凭证</button>
+        <button class="tab" data-tab="documents" role="tab">单据台账</button>
+        <button class="tab" data-tab="trial" role="tab">科目汇总表</button>
+        <button class="tab" data-tab="issues" role="tab">问题与待办 <span id="issueCount" class="pill"></span></button>
+      </div>
+
+      <div id="tab-vouchers" class="tab-panel active">
+        <div class="table-tools">
+          <input id="voucherFilter" type="search" placeholder="按摘要、科目、凭证号筛选…">
+          <label class="checkbox small"><input id="onlyIssue" type="checkbox"><span>只看有警示的凭证</span></label>
+        </div>
+        <div class="table-wrap"><table id="voucherTable"></table></div>
+      </div>
+
+      <div id="tab-documents" class="tab-panel">
+        <div class="table-tools">
+          <input id="docFilter" type="search" placeholder="按摘要、往来单位、文件筛选…">
+        </div>
+        <div class="table-wrap"><table id="docTable"></table></div>
+      </div>
+
+      <div id="tab-trial" class="tab-panel">
+        <div class="table-wrap"><table id="trialTable"></table></div>
+      </div>
+
+      <div id="tab-issues" class="tab-panel">
+        <div class="table-tools">
+          <label class="checkbox small">
+            <input id="issueLevelError" type="checkbox" checked><span>错误</span>
+          </label>
+          <label class="checkbox small">
+            <input id="issueLevelWarning" type="checkbox" checked><span>警告</span>
+          </label>
+          <label class="checkbox small">
+            <input id="issueLevelInfo" type="checkbox"><span>提示</span>
+          </label>
+        </div>
+        <div class="table-wrap"><table id="issueTable"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card muted">
+    <h2>使用提示</h2>
+    <ul class="tips">
+      <li><strong>先看「问题与待办」。</strong>错误级别的问题必须处理，否则凭证可能不符合你的实际业务。</li>
+      <li><strong>同一笔业务不要重复导入。</strong>系统会自动识别银行代发工资与工资表的重复，但其它重复需你自行判断。</li>
+      <li><strong>科目与规则都可配置。</strong>修改 <code>config/mappings/*.yaml</code> 后刷新本页重新生成即可，不用改代码。</li>
+      <li><strong>生成的凭证是草稿。</strong>请务必人工复核后再导入财务软件，尤其是走「待处理财产损溢」的分录。</li>
+      <li><strong>期初余额不在本工具范围内。</strong>银行对账单的期初余额需在金蝶/用友中录入，否则银行存款科目余额会偏移。</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <span>数据全程在本机处理 · 服务仅监听 127.0.0.1</span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

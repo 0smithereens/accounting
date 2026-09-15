@@ -1,0 +1,136 @@
+name: 新增银行 / 财务系统格式支持
+description: 你的银行流水或发票台账识别不了，希望系统支持
+title: "[格式支持] "
+labels: ["格式支持"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        国内银行流水的格式差异极大，每多覆盖一家都是实实在在的价值。感谢你愿意贡献。
+
+        ## 你可以自己搞定（通常 5 分钟）
+
+        大部分情况只需要在**同义词词典里加几个词**，不需要改逻辑。步骤：
+
+        1. 找到没被识别的列
+
+           ```bash
+           node src/cli.ts explain 你的文件.xlsx
+           ```
+
+           看输出里「表头：…」这一行，对照是否出现「缺少必需列：交易日期、摘要」。
+
+        2. 打开 `src/extract/schemas.ts`，找到 `BANK_COLUMNS`（或 `INVOICE_COLUMNS` 等），
+           在对应字段的 `synonyms` 数组里加上你这家银行的表头叫法：
+
+           ```ts
+           {
+             key: 'summary',
+             label: '摘要',
+             required: true,
+             synonyms: [
+               '摘要', '交易摘要', '摘要说明', '业务摘要', '交易说明', '用途', '附言',
+               '备注', '交易描述', '说明', '摘要内容', '交易备注', '详情',
+               '你的银行特有的叫法',        // ← 加在这里
+             ],
+           },
+           ```
+
+        3. 验证并提 PR：
+
+           ```bash
+           node src/cli.ts explain 你的文件.xlsx
+           npm test
+           npm run check
+           ```
+
+        详细说明见 [CONTRIBUTING.md](../CONTRIBUTING.md#最常见的贡献新增一种银行格式)。
+
+        ---
+
+        ## 如果你不想改代码
+
+        也可以用下面的表单把格式信息提供出来，我来加。
+
+  - type: input
+    id: bank
+    attributes:
+      label: 银行 / 系统名称
+      placeholder: "招商银行 / 金蝶 KIS / 用友 T3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 单据类型
+      options:
+        - 银行流水 / 对账单
+        - 发票台账
+        - 报销单 / 费用明细
+        - 工资表 / 社保公积金
+    validations:
+      required: true
+
+  - type: textarea
+    id: headers
+    attributes:
+      label: 完整表头行（脱敏后）
+      description: 把表头那一行的所有列名原样贴出来，用 | 分隔
+      placeholder: "交易日期 | 交易时间 | 摘要 | 对方户名 | 对方账号 | 借方发生额 | 贷方发生额 | 余额 | 本方账号 | 币种"
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample-rows
+    attributes:
+      label: 2~3 行样例数据（必须脱敏）
+      description: |
+        ⚠️ **请把所有真实的公司名、账号、人名、金额改掉。**
+        只要**列的位置和格式**对得上就够了，数值随便填。
+      placeholder: |
+        2024-01-03 | 10:22:15 | 收到货款 | 某某电子有限公司 | 622202****4455 |          | 158000.00 | 1358000.00
+        2024-01-05 | 14:08:33 | 支付货款 | 某某精密制造公司 | 622202****5566 | 96000.00 |           | 1262000.00
+        2024-01-05 | 14:09:02 | 跨行转账手续费 |              |                 |    25.00 |           | 1261975.00
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: amount-style
+    attributes:
+      label: 金额是怎么表示的
+      description: 这决定了能不能正确判断收付方向
+      options:
+        - 借方发生额 / 贷方发生额 两列
+        - 一列金额 + 一列借贷标志（借/贷、收/付）
+        - 一列金额，正数收款负数付款
+        - 一列金额，全为正数，方向靠别的列判断
+        - 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: header-row
+    attributes:
+      label: 表头在第几行
+      description: 如果表头前面有标题行，告诉我是第几行。运行 explain 命令能看到
+      placeholder: "第 4 行"
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 其它需要说明的
+      description: 比如特殊列的含义、某些行的特殊处理方式等
+      render: text
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 确认
+      options:
+        - label: 我已经把真实的公司名、账号、人名、金额全部替换成虚构内容
+          required: true
+        - label: 表头行的列名保持原样未做修改
+          required: true
