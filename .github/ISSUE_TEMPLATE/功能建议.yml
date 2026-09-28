@@ -1,0 +1,65 @@
+name: 功能建议 / 其它问题
+description: 提出新功能建议，或报告与识别无关的问题
+title: "[建议] "
+labels: ["建议"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先看一下 [README 的「已知限制」](../README.md#已知限制与人工复核点) 和
+        [CHANGELOG 的「计划中」](../CHANGELOG.md#计划中)，避免重复提已经在计划里的内容。
+
+        另外，本项目**刻意不做**这些事，提之前请先确认：
+
+        - ❌ 不做无人值守的全自动记账（会计判断必须有人兜底）
+        - ❌ 不做 OCR，不识别图片版发票
+        - ❌ 不联网、不调用大模型 API（数据不出本机是设计前提）
+        - ❌ 不做多用户 / 云端部署
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 类型
+      options:
+        - 新功能建议
+        - 使用体验问题
+        - 文档不清楚
+        - 性能问题
+        - 其它
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决什么问题
+      description: 请描述**问题**，而不只是方案。这样我能判断有没有更好的解法
+      placeholder: |
+        每个月都要手工把银行流水里的社保那一笔拆成单位部分和个人部分，
+        一个月的凭证里要改十几次，很费时间。
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 你设想的解决方案
+      description: 可选。如果你已经有想法
+      placeholder: |
+        能不能在 config 里配置一个固定的单位/个人比例，让系统自动拆分？
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 你现在的替代做法
+      description: 可选。你现在是怎么绕过这个问题的
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      placeholder: "v0.1.0 或 git log -1 --format=%h"

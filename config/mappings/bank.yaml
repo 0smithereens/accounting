@@ -1,0 +1,463 @@
+# =============================================================================
+# 银行流水 / 对账单 记账规则
+# =============================================================================
+# 匹配规则：
+#   - priority 越大越先匹配，命中第一条即停止（stop 默认 true）
+#   - when 中声明的多个条件之间是「与」关系
+#   - then.entries 里 amount 取值：total 总金额 / net 不含税 / tax 税额 / balanced 差额配平
+#
+# 调整思路：把你自己银行流水里常见的摘要往上加规则即可。
+# 匹配不到具体规则时会落到最底部的兜底规则（挂 1901 待处理科目）。
+# =============================================================================
+
+name: 银行流水规则
+
+rules:
+  # ------------------------- 一、极高优先级：特殊业务 -------------------------
+
+  - id: bank-wealth-purchase
+    desc: 购买理财/基金/结构性存款
+    kinds: [bank]
+    priority: 900
+    when:
+      summary: [理财申购, 购买理财, 理财认购, 基金申购, 购买基金, 结构性存款, 大额存单, 国债逆回购]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "1101", amount: total, summary: "购买理财：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-wealth-redeem
+    desc: 理财赎回/到期
+    kinds: [bank]
+    priority: 900
+    when:
+      summary: [理财赎回, 赎回理财, 基金赎回, 理财到期, 产品到期, 理财兑付]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1101", amount: total, summary: "理财赎回：{summary}" }
+    warn: "理财赎回若包含收益，请人工拆分投资收益（借 1002，贷 1101 + 贷 6111）"
+
+  - id: bank-time-deposit-out
+    desc: 转存定期存款
+    kinds: [bank]
+    priority: 880
+    when:
+      summary: [定期存款, 通知存款, 转存定期, 存单]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "1012.01", amount: total, summary: "转存定期：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-time-deposit-in
+    desc: 定期存款到期转回
+    kinds: [bank]
+    priority: 880
+    when:
+      summary: [定期存款, 通知存款, 存单]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1012.01", amount: total, summary: "定期到期转回：{summary}" }
+
+  # ----------------------------- 二、利息 -----------------------------
+
+  - id: bank-interest-income
+    desc: 银行存款利息收入
+    kinds: [bank]
+    priority: 800
+    when:
+      summary: [利息, 结息, 存款利息, 利息收入, 季度结息]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "6603.04", amount: total, summary: "银行存款利息收入" }
+
+  - id: bank-interest-expense
+    desc: 贷款利息支出
+    kinds: [bank]
+    priority: 800
+    when:
+      summary: [利息, 贷款利息, 借款利息, 利息支出, 罚息, 复利]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "6603.01", amount: total, summary: "支付借款利息：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  # --------------------------- 三、手续费 -----------------------------
+
+  - id: bank-fee
+    desc: 银行手续费/账户管理费
+    kinds: [bank]
+    priority: 780
+    when:
+      summary: [手续费, 服务费, 工本费, 账户管理费, 年费, 汇划费, 结算费, 跨行费, 电汇费, 网银费, 短信费, 账户维护费, 对公服务费]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "6603.02", amount: total, summary: "银行手续费：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  # --------------------------- 四、工资 -------------------------------
+
+  - id: bank-payroll-payment
+    desc: 代发工资
+    kinds: [bank]
+    priority: 760
+    when:
+      summary: [代发工资, 工资代发, 发放工资, 工资发放, 薪资代发, 批量代发工资, 代发薪]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2211.01", amount: total, summary: "发放工资：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "银行代发工资为实发金额；个人社保、公积金、个税需另按工资表生成代扣凭证，避免应付职工薪酬余额不平"
+
+  # ------------------------- 五、社保公积金 ---------------------------
+
+  - id: bank-social-insurance
+    desc: 缴纳社保
+    kinds: [bank]
+    priority: 740
+    when:
+      summary: [社保, 社会保险, 养老保险, 医疗保险, 失业保险, 工伤保险, 生育保险, 医保, 税务局社保, 社保费]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2211.02", amount: total, summary: "缴纳社会保险费：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "该笔社保含单位部分与个人代扣部分，个人部分应冲减 2241.01；金额较大时建议拆分"
+
+  - id: bank-housing-fund
+    desc: 缴纳住房公积金
+    kinds: [bank]
+    priority: 740
+    when:
+      summary: [公积金, 住房公积金, 住房补贴]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2211.03", amount: total, summary: "缴纳住房公积金：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "该笔公积金含单位部分与个人代扣部分，个人部分应冲减 2241.02"
+
+  # ----------------------------- 六、税款 -----------------------------
+
+  - id: bank-tax-vat
+    desc: 缴纳增值税
+    kinds: [bank]
+    priority: 720
+    when:
+      summary: [增值税, 未交增值税, 增值税款]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.02", amount: total, summary: "缴纳增值税：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-tax-income-tax
+    desc: 缴纳企业所得税
+    kinds: [bank]
+    priority: 720
+    when:
+      summary: [企业所得税, 所得税汇算, 汇算清缴]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.03", amount: total, summary: "缴纳企业所得税：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-tax-iit
+    desc: 代扣代缴个人所得税
+    kinds: [bank]
+    priority: 725
+    when:
+      summary: [个人所得税, 个税, 工资薪金所得, 代扣代缴]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.04", amount: total, summary: "缴纳个人所得税：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-tax-surcharge
+    desc: 城建税及附加
+    kinds: [bank]
+    priority: 720
+    when:
+      summary: [城市维护建设税, 城建税, 教育费附加, 地方教育附加, 附加税]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.05", amount: total, summary: "缴纳城建税及附加：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-tax-stamp
+    desc: 印花税/房产税/土地使用税
+    kinds: [bank]
+    priority: 720
+    when:
+      summary: [印花税, 房产税, 土地使用税, 车船税, 环保税]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.08", amount: total, summary: "缴纳税费：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-tax-generic
+    desc: 其他税款（兜底）
+    kinds: [bank]
+    priority: 710
+    when:
+      summary: [税, 税款, 扣缴, 税务局, 国库]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2221.02", amount: total, summary: "缴纳税款（待确认税种）：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "未能识别具体税种，已挂 2221.02 未交增值税，请按完税凭证调整到正确税种科目"
+
+  # --------------------- 六点五、公用事业与租金 -----------------------
+
+  - id: bank-utilities
+    desc: 支付水电燃气物业费
+    kinds: [bank]
+    priority: 705
+    when:
+      summary: [电费, 水费, 燃气费, 天然气, 自来水, 物业费, 取暖费, 供暖费, 电力, 能源费]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "6602.05", amount: total, summary: "支付水电物业费：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-rent
+    desc: 支付房租/场地租金
+    kinds: [bank]
+    priority: 705
+    when:
+      summary: [房租, 租金, 租赁费, 场地费, 库房租金, 办公室租金]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "6602.06", amount: total, summary: "支付租金：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "跨年度的租金应先记 1801 长期待摊费用，再按受益期分期摊销"
+
+  - id: bank-communication
+    desc: 支付通讯费
+    kinds: [bank]
+    priority: 705
+    when:
+      summary: [话费, 通讯费, 宽带费, 电信费, 移动通信, 联通, 网络费]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "6602.08", amount: total, summary: "支付通讯费：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  # --------------------------- 七、现金存取 ---------------------------
+  - id: bank-cash-withdraw
+    desc: 提取现金
+    kinds: [bank]
+    priority: 700
+    when:
+      summary: [提现, 现金支取, 取现, 备用金提取, 支票取现]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "1001", amount: total, summary: "提取现金：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  - id: bank-cash-deposit
+    desc: 存入现金
+    kinds: [bank]
+    priority: 700
+    when:
+      summary: [存现, 现金存入, 现金缴存, 解款]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1001", amount: total, summary: "存入现金：{summary}" }
+
+  # --------------------------- 八、借款 -------------------------------
+
+  - id: bank-loan-in
+    desc: 取得银行借款
+    kinds: [bank]
+    priority: 650
+    when:
+      summary: [流动资金贷款, 银行借款, 贷款发放, 发放贷款, 授信提款, 借款到账]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "2001", amount: total, summary: "取得银行借款：{summary}" }
+    warn: "期限超过一年的借款应记入 2501 长期借款，请核对借款合同期限"
+
+  - id: bank-loan-repay
+    desc: 归还银行借款
+    kinds: [bank]
+    priority: 650
+    when:
+      summary: [归还贷款, 还贷, 偿还借款, 归还本金, 贷款还款, 提前还款]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2001", amount: total, summary: "归还银行借款：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+    warn: "若本笔还款含利息，需拆分为本金（2001）与利息（6603.01）"
+
+  # --------------------------- 九、退款 -------------------------------
+
+  - id: bank-refund-received
+    desc: 收到退款
+    kinds: [bank]
+    priority: 600
+    when:
+      summary: [退款, 退回, 退货退款, 返还, 退费]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1221", amount: total, summary: "收到退款：{summary}" }
+    warn: "若为供应商退回货款，贷方应为 2202 应付账款；若为费用退回，建议红冲原费用科目"
+
+  - id: bank-refund-paid
+    desc: 支付退款
+    kinds: [bank]
+    priority: 600
+    when:
+      summary: [退款, 退回, 退还, 退费]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "1221", amount: total, summary: "支付退款：{summary}" }
+        - { side: credit, account: "1002", amount: total }
+
+  # ----------------------- 十、内部账户划转 ---------------------------
+
+  - id: bank-internal-transfer
+    desc: 本企业账户之间的内部划转
+    kinds: [bank]
+    priority: 550
+    when:
+      fields: { internalTransfer: true }
+    then:
+      entries:
+        - { side: debit, account: "1002.01", amount: total, summary: "内部账户划转（转入）：{summary}" }
+        - { side: credit, account: "1002.02", amount: total, summary: "内部账户划转（转出）：{summary}" }
+    warn: "内部划转的收付账户需人工确认（默认按 基本户 ↔ 一般户 处理），请核对后调整明细科目"
+
+  # ------------------------- 十一、代收代付 ---------------------------
+
+  - id: bank-advance-received
+    desc: 收到预收款
+    kinds: [bank]
+    priority: 580
+    when:
+      summary: [预收款, 预付款到账, 预收, 定金, 订金, 保证金, 押金]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "2203", amount: total, summary: "收到预收款：{summary}", auxiliary: { customer: "{counterparty}" } }
+
+  - id: bank-advance-paid
+    desc: 支付预付款/押金
+    kinds: [bank]
+    priority: 580
+    when:
+      summary: [预付款, 预付, 定金, 订金, 保证金, 押金]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "1123", amount: total, summary: "支付预付款：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "1002", amount: total }
+
+  # ------------------------- 十二、报销付款 ---------------------------
+
+  - id: bank-expense-reimbursement
+    desc: 支付员工报销款
+    kinds: [bank]
+    priority: 510
+    when:
+      summary: [报销, 报销款, 差旅费报销, 费用报销]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2241.04", amount: total, summary: "支付员工报销款：{summary}", auxiliary: { employee: "{counterparty}" } }
+        - { side: credit, account: "1002", amount: total }
+
+  # ------------------------- 十二、货款往来 ---------------------------
+
+  - id: bank-goods-received
+    desc: 收到货款/服务款
+    kinds: [bank]
+    priority: 570
+    when:
+      summary: [货款, 销售款, 服务款, 合同款, 工程款, 加工费, 结算款, 回款]
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1122", amount: total, summary: "收到货款：{summary}", auxiliary: { customer: "{counterparty}" } }
+    warn: "已按「收回货款」冲减应收账款；若是预收性质请改用 2203 预收账款，若已开票未收款请核对是否重复记账"
+
+  - id: bank-goods-paid
+    desc: 支付货款/采购款
+    kinds: [bank]
+    priority: 570
+    when:
+      summary: [货款, 采购款, 材料款, 设备款, 合同款, 工程款, 加工费, 结算款]
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2202", amount: total, summary: "支付货款：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "1002", amount: total }
+    warn: "已按「支付货款」冲减应付账款；若为预付性质请改用 1123 预付账款，若已收票未付款请核对是否重复记账"
+
+  # ------------------------- 十三、兜底 -----------------------------
+
+  - id: bank-fallback-out
+    desc: 未识别付款（兜底）
+    kinds: [bank]
+    priority: 100
+    when:
+      direction: out
+    then:
+      entries:
+        - { side: debit, account: "2202", amount: total, summary: "付款（待确认用途）：{summary}", auxiliary: { supplier: "{counterparty}" } }
+        - { side: credit, account: "1002", amount: total }
+    warn: "未能识别该笔付款的具体用途，已暂按「支付应付账款」处理。请补充 config/mappings/bank.yaml 中的摘要关键字规则后重新生成，或人工调整科目"
+
+  - id: bank-fallback-in
+    desc: 未识别收款（兜底）
+    kinds: [bank]
+    priority: 100
+    when:
+      direction: in
+    then:
+      entries:
+        - { side: debit, account: "1002", amount: total }
+        - { side: credit, account: "1122", amount: total, summary: "收款（待确认来源）：{summary}", auxiliary: { customer: "{counterparty}" } }
+    warn: "未能识别该笔收款的具体来源，已暂按「收回应收账款」处理。请补充 config/mappings/bank.yaml 中的摘要关键字规则后重新生成，或人工调整科目"
+
+  # 信用/借记双栏都空时无法生成分录
+  - id: bank-no-direction
+    desc: 无法判断收付方向
+    kinds: [bank]
+    priority: 90
+    when:
+      direction: none
+    then:
+      entries:
+        - { side: debit, account: "1901", amount: total, summary: "方向不明：{summary}" }
+        - { side: credit, account: "1901", amount: total, summary: "方向不明：{summary}" }
+    warn: "无法判断该笔流水的收付方向，已生成空转分录占位，请人工处理"
