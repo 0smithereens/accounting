@@ -107,6 +107,7 @@ docs/_rules2025*
 # =============================================================================
 dsh-session-*.zip
 accounting-automation-github.zip
+accounting-v*.zip
 accounting-v*-source.zip
 release/
 _publish/
