@@ -1,0 +1,308 @@
+# =============================================================================
+# 小企业会计准则 —— 财务报表格式
+# =============================================================================
+# 依据：财政部《小企业会计准则》（财会〔2011〕17 号）附录「财务报表」。
+# 与《企业会计准则》报表的实质差异（本文件通过「不设该行」+ skip 检查来体现）：
+#   资产负债表：不设 交易性金融资产（改为「短期投资」）、可供出售金融资产、
+#               持有至到期投资、开发支出、商誉、递延所得税资产/负债；
+#               长期待摊费用单行列示，不拆「其中」明细。
+#   利润表：    不设 资产减值损失、公允价值变动收益、其他综合收益、研发费用（改为
+#               「管理费用—其中：研究费用」）。
+#   现金流量表 / 所有者权益变动表：小企业会计准则未强制要求，本文件给出简化参考格式，
+#               并在 checks 中提示「仅供参考」。
+#
+# 规则语法与 statements-cas.yaml 完全一致，详见该文件顶部说明。
+# =============================================================================
+
+standard: small
+title: 小企业会计准则财务报表
+basis:
+  - id: small-enterprise-standard
+    title: 财政部关于印发《小企业会计准则》的通知
+    article: 财会〔2011〕17 号
+    excerpt: 附录规定了小企业资产负债表、利润表、现金流量表、所有者权益变动表的格式
+    effectiveFrom: "2013-01-01"
+    level: departmental-rule
+  - id: small-enterprise-standard-art79
+    title: 小企业会计准则
+    article: 第七十九条
+    excerpt: 小企业应当按照本准则的规定编制财务报表
+    effectiveFrom: "2013-01-01"
+    level: departmental-rule
+
+statements:
+
+  # ---------------------------------------------------------------------------
+  # 资产负债表（行次 1-52）
+  # ---------------------------------------------------------------------------
+  balance_sheet:
+    title: 资产负债表
+    rows:
+      - { code: "H1", key: BS-H-ASSET, label: 资产, level: 0, rule: { kind: header } }
+      - { code: "1", key: BS-CASH, label: 货币资金, level: 1, rule: { kind: accounts, codes: ["1001", "1002", "1012"], sign: debit } }
+      - { code: "2", key: BS-ST-INV, label: 短期投资, level: 1, rule: { kind: accounts, codes: ["1101"], sign: debit } }
+      - { code: "3", key: BS-NOTE-RECV, label: 应收票据, level: 1, rule: { kind: accounts, codes: ["1121"], sign: debit } }
+      - { code: "4", key: BS-AR, label: 应收账款, level: 1, rule: { kind: accounts, codes: ["1122"], sign: debit, minus: ["1231"] } }
+      - { code: "5", key: BS-PREPAY, label: 预付账款, level: 1, rule: { kind: accounts, codes: ["1123"], sign: debit } }
+      - { code: "6", key: BS-DIVIDEND-RECV, label: 应收股利, level: 1, rule: { kind: accounts, codes: ["1131"], sign: debit } }
+      - { code: "7", key: BS-INTEREST-RECV, label: 应收利息, level: 1, rule: { kind: accounts, codes: ["1132"], sign: debit } }
+      - { code: "8", key: BS-OTHER-RECV, label: 其他应收款, level: 1, rule: { kind: accounts, codes: ["1221"], sign: debit } }
+      - { code: "9", key: BS-INVENTORY, label: 存货, level: 1, rule: { kind: accounts, codes: ["1401", "1402", "1403", "1405", "1408", "5001", "5101", "5201"], sign: debit, minus: ["1471"] } }
+      - { code: "10", key: BS-INV-MATERIAL, label: 其中：原材料, level: 2, rule: { kind: accounts, codes: ["1403"], sign: debit } }
+      - { code: "11", key: BS-INV-WIP, label: 在产品, level: 2, rule: { kind: accounts, codes: ["5001"], sign: debit } }
+      - { code: "12", key: BS-INV-GOODS, label: 库存商品, level: 2, rule: { kind: accounts, codes: ["1405"], sign: debit } }
+      - { code: "13", key: BS-INV-TURNOVER, label: 周转材料, level: 2, rule: { kind: accounts, codes: ["1411"], sign: debit } }
+      - { code: "14", key: BS-OTHER-CA, label: 其他流动资产, level: 1, rule: { kind: accounts, codes: ["1901"], sign: debit } }
+      - { code: "15", key: BS-CURRENT-TOTAL, label: 流动资产合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-CASH", "BS-ST-INV", "BS-NOTE-RECV", "BS-AR", "BS-PREPAY", "BS-DIVIDEND-RECV", "BS-INTEREST-RECV", "BS-OTHER-RECV", "BS-INVENTORY", "BS-OTHER-CA"] } }
+      - { code: "16", key: BS-LT-BOND, label: 长期债券投资, level: 1, rule: { kind: accounts, codes: ["1501"], sign: debit } }
+      - { code: "17", key: BS-LT-EQUITY-INV, label: 长期股权投资, level: 1, rule: { kind: accounts, codes: ["1511"], sign: debit, minus: ["1512"] } }
+      - { code: "18", key: BS-FIXED-COST, label: 固定资产原价, level: 1, rule: { kind: accounts, codes: ["1601"], sign: debit } }
+      - { code: "19", key: BS-ACC-DEP, label: 减：累计折旧, level: 1, rule: { kind: accounts, codes: ["1602"], sign: credit } }
+      - { code: "20", key: BS-FIXED, label: 固定资产账面价值, level: 1, rule: { kind: diff, of: ["BS-FIXED-COST", "BS-ACC-DEP"] } }
+      - { code: "21", key: BS-CIP, label: 在建工程, level: 1, rule: { kind: accounts, codes: ["1604"], sign: debit } }
+      - { code: "22", key: BS-ENG-MATERIAL, label: 工程物资, level: 1, rule: { kind: accounts, codes: ["1605"], sign: debit } }
+      - { code: "23", key: BS-FIXED-CLEAR, label: 固定资产清理, level: 1, rule: { kind: accounts, codes: ["1606"], sign: debit } }
+      - { code: "24", key: BS-BIO, label: 生产性生物资产, level: 1, rule: { kind: accounts, codes: ["1621"], sign: debit } }
+      - { code: "25", key: BS-INTANGIBLE, label: 无形资产, level: 1, rule: { kind: accounts, codes: ["1701"], sign: debit, minus: ["1702", "1703"] } }
+      - { code: "26", key: BS-LT-PREPAID, label: 长期待摊费用, level: 1, rule: { kind: accounts, codes: ["1801"], sign: debit } }
+      - { code: "27", key: BS-OTHER-NCA, label: 其他非流动资产, level: 1, rule: { kind: accounts, codes: ["1902"], sign: debit } }
+      - { code: "28", key: BS-NCA-TOTAL, label: 非流动资产合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-LT-BOND", "BS-LT-EQUITY-INV", "BS-FIXED", "BS-CIP", "BS-ENG-MATERIAL", "BS-FIXED-CLEAR", "BS-BIO", "BS-INTANGIBLE", "BS-LT-PREPAID", "BS-OTHER-NCA"] } }
+      - { code: "29", key: BS-TOTAL-ASSETS, label: 资产总计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-CURRENT-TOTAL", "BS-NCA-TOTAL"] } }
+
+      - { code: "H2", key: BS-H-LIAB, label: 负债和所有者权益, level: 0, rule: { kind: header } }
+      - { code: "30", key: BS-ST-LOAN, label: 短期借款, level: 1, rule: { kind: accounts, codes: ["2001"], sign: credit } }
+      - { code: "31", key: BS-NOTE-PAY, label: 应付票据, level: 1, rule: { kind: accounts, codes: ["2201"], sign: credit } }
+      - { code: "32", key: BS-AP, label: 应付账款, level: 1, rule: { kind: accounts, codes: ["2202"], sign: credit } }
+      - { code: "33", key: BS-ADVANCE, label: 预收账款, level: 1, rule: { kind: accounts, codes: ["2203"], sign: credit } }
+      - { code: "34", key: BS-PAYROLL, label: 应付职工薪酬, level: 1, rule: { kind: accounts, codes: ["2211"], sign: credit } }
+      - { code: "35", key: BS-TAX-PAY, label: 应交税费, level: 1, rule: { kind: accounts, codes: ["2221"], sign: credit } }
+      - { code: "36", key: BS-INTEREST-PAY, label: 应付利息, level: 1, rule: { kind: accounts, codes: ["2231"], sign: credit } }
+      - { code: "37", key: BS-PROFIT-PAY, label: 应付利润, level: 1, rule: { kind: accounts, codes: ["2232"], sign: credit } }
+      - { code: "38", key: BS-OTHER-PAY, label: 其他应付款, level: 1, rule: { kind: accounts, codes: ["2241"], sign: credit } }
+      - { code: "39", key: BS-OTHER-CL, label: 其他流动负债, level: 1, rule: { kind: accounts, codes: ["2246"], sign: credit } }
+      - { code: "40", key: BS-CURRENT-LIAB-TOTAL, label: 流动负债合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-ST-LOAN", "BS-NOTE-PAY", "BS-AP", "BS-ADVANCE", "BS-PAYROLL", "BS-TAX-PAY", "BS-INTEREST-PAY", "BS-PROFIT-PAY", "BS-OTHER-PAY", "BS-OTHER-CL"] } }
+      - { code: "41", key: BS-LT-LOAN, label: 长期借款, level: 1, rule: { kind: accounts, codes: ["2501"], sign: credit } }
+      - { code: "42", key: BS-LT-PAY, label: 长期应付款, level: 1, rule: { kind: accounts, codes: ["2702"], sign: credit } }
+      - { code: "43", key: BS-DEFERRED-INC, label: 递延收益, level: 1, rule: { kind: accounts, codes: ["2401"], sign: credit } }
+      - { code: "44", key: BS-OTHER-NCL, label: 其他非流动负债, level: 1, rule: { kind: accounts, codes: ["2902"], sign: credit } }
+      - { code: "45", key: BS-NCL-TOTAL, label: 非流动负债合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-LT-LOAN", "BS-LT-PAY", "BS-DEFERRED-INC", "BS-OTHER-NCL"] } }
+      - { code: "46", key: BS-TOTAL-LIAB, label: 负债合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-CURRENT-LIAB-TOTAL", "BS-NCL-TOTAL"] } }
+      - { code: "47", key: BS-PAID-IN, label: 实收资本, level: 1, rule: { kind: accounts, codes: ["4001"], sign: credit } }
+      - { code: "48", key: BS-CAP-RESERVE, label: 资本公积, level: 1, rule: { kind: accounts, codes: ["4002"], sign: credit } }
+      - { code: "49", key: BS-SURPLUS, label: 盈余公积, level: 1, rule: { kind: accounts, codes: ["4101"], sign: credit } }
+      - { code: "50", key: BS-RETAINED, label: 未分配利润, level: 1, rule: { kind: accounts, codes: ["4103", "4104"], sign: credit } }
+      - { code: "51", key: BS-EQUITY-TOTAL, label: 所有者权益合计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-PAID-IN", "BS-CAP-RESERVE", "BS-SURPLUS", "BS-RETAINED"] } }
+      - { code: "52", key: BS-TOTAL-LE, label: 负债和所有者权益总计, level: 1, isTotal: true, rule: { kind: sum, of: ["BS-TOTAL-LIAB", "BS-EQUITY-TOTAL"] } }
+
+      # 小企业会计准则下不得出现（或不存在）的项目：不设报表行，但若账簿里仍有余额要告警
+      - { code: "X1", key: BS-SKIP-DTA, label: 递延所得税资产（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["1811"], reason: 小企业会计准则采用应付税款法，不确认递延所得税资产 } }
+      - { code: "X2", key: BS-SKIP-DTL, label: 递延所得税负债（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["2901"], reason: 小企业会计准则采用应付税款法，不确认递延所得税负债 } }
+      - { code: "X3", key: BS-SKIP-AFS, label: 可供出售金融资产（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["1503"], reason: 小企业会计准则不设「可供出售金融资产」科目 } }
+      - { code: "X4", key: BS-SKIP-HTM, label: 持有至到期投资（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["1502"], reason: 小企业会计准则不设「持有至到期投资」科目 } }
+      - { code: "X5", key: BS-SKIP-DEV, label: 开发支出（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["5301.02"], reason: 小企业会计准则不区分研发支出资本化，不设「开发支出」项目 } }
+      - { code: "X6", key: BS-SKIP-GOODWILL, label: 商誉（小企业准则不适用）, level: 9, hidden: true, rule: { kind: skip, codes: ["1711"], reason: 小企业会计准则不确认商誉 } }
+    checks:
+      - id: BS-BALANCE
+        label: 资产总计 = 负债和所有者权益总计
+        actual: BS-TOTAL-ASSETS
+        expected: { sum: ["BS-TOTAL-LE"] }
+      - id: BS-CURRENT-SUM
+        label: 流动资产合计 = 各流动资产项目之和
+        actual: BS-CURRENT-TOTAL
+        expected: { sum: ["BS-CASH", "BS-ST-INV", "BS-NOTE-RECV", "BS-AR", "BS-PREPAY", "BS-DIVIDEND-RECV", "BS-INTEREST-RECV", "BS-OTHER-RECV", "BS-INVENTORY", "BS-OTHER-CA"] }
+      - id: BS-NCA-SUM
+        label: 非流动资产合计 = 各非流动资产项目之和
+        actual: BS-NCA-TOTAL
+        expected: { sum: ["BS-LT-BOND", "BS-LT-EQUITY-INV", "BS-FIXED", "BS-CIP", "BS-ENG-MATERIAL", "BS-FIXED-CLEAR", "BS-BIO", "BS-INTANGIBLE", "BS-LT-PREPAID", "BS-OTHER-NCA"] }
+      - id: BS-FIXED-VALUE
+        label: 固定资产账面价值 = 固定资产原价 − 累计折旧
+        actual: BS-FIXED
+        expected: { sum: ["BS-FIXED-COST"], minus: ["BS-ACC-DEP"] }
+      - id: BS-LIAB-SUM
+        label: 负债合计 = 流动负债合计 + 非流动负债合计
+        actual: BS-TOTAL-LIAB
+        expected: { sum: ["BS-CURRENT-LIAB-TOTAL", "BS-NCL-TOTAL"] }
+      - id: BS-EQUITY-SUM
+        label: 所有者权益合计 = 各权益项目之和
+        actual: BS-EQUITY-TOTAL
+        expected: { sum: ["BS-PAID-IN", "BS-CAP-RESERVE", "BS-SURPLUS", "BS-RETAINED"] }
+
+  # ---------------------------------------------------------------------------
+  # 利润表（行次 1-32）—— 无资产减值损失、公允价值变动收益、其他综合收益
+  # ---------------------------------------------------------------------------
+  income_statement:
+    title: 利润表
+    rows:
+      - { code: "1", key: IS-REV, label: 一、营业收入, level: 0, isTotal: true, rule: { kind: accounts, codes: ["6001", "6051"], sign: credit, source: net } }
+      - { code: "2", key: IS-COST, label: 减：营业成本, level: 1, rule: { kind: accounts, codes: ["6401", "6402"], sign: debit, source: net } }
+      - { code: "3", key: IS-TAX-SUR, label: 税金及附加, level: 1, rule: { kind: accounts, codes: ["6403"], sign: debit, source: net } }
+      - { code: "4", key: IS-CONSUMPTION, label: 其中：消费税, level: 2, rule: { kind: accounts, codes: ["6403.04"], sign: debit, source: net } }
+      - { code: "5", key: IS-BUSINESS-TAX, label: 营业税, level: 2, rule: { kind: accounts, codes: ["6403.05"], sign: debit, source: net } }
+      - { code: "6", key: IS-URBAN-TAX, label: 城市维护建设税, level: 2, rule: { kind: accounts, codes: ["6403.01"], sign: debit, source: net } }
+      - { code: "7", key: IS-RESOURCE-TAX, label: 资源税, level: 2, rule: { kind: accounts, codes: ["6403.06"], sign: debit, source: net } }
+      - { code: "8", key: IS-LAND-TAX, label: 土地增值税, level: 2, rule: { kind: accounts, codes: ["6403.07"], sign: debit, source: net } }
+      - { code: "9", key: IS-PROPERTY-TAX, label: 城镇土地使用税、房产税、车船税、印花税, level: 2, rule: { kind: accounts, codes: ["6403.03", "6403.08", "6403.09", "6403.10"], sign: debit, source: net } }
+      - { code: "10", key: IS-EDU-TAX, label: 教育费附加、矿产资源补偿费、排污费, level: 2, rule: { kind: accounts, codes: ["6403.02"], sign: debit, source: net } }
+      - { code: "11", key: IS-SELL, label: 销售费用, level: 1, rule: { kind: accounts, codes: ["6601"], sign: debit, source: net } }
+      - { code: "12", key: IS-REPAIR, label: 其中：商品维修费, level: 2, rule: { kind: accounts, codes: ["6601.13"], sign: debit, source: net } }
+      - { code: "13", key: IS-AD, label: 广告费和业务宣传费, level: 2, rule: { kind: accounts, codes: ["6601.06"], sign: debit, source: net } }
+      - { code: "14", key: IS-ADMIN, label: 管理费用, level: 1, rule: { kind: accounts, codes: ["6602"], sign: debit, source: net } }
+      - { code: "15", key: IS-OPEN-FEE, label: 其中：开办费, level: 2, rule: { kind: accounts, codes: ["6602.20"], sign: debit, source: net } }
+      - { code: "16", key: IS-ENTERTAIN, label: 业务招待费, level: 2, rule: { kind: accounts, codes: ["6602.07"], sign: debit, source: net } }
+      - { code: "17", key: IS-RD, label: 研究费用, level: 2, rule: { kind: accounts, codes: ["6602.18", "5301.01"], sign: debit, source: net } }
+      - { code: "18", key: IS-FIN, label: 财务费用, level: 1, rule: { kind: accounts, codes: ["6603"], sign: debit, source: net } }
+      - { code: "19", key: IS-INT-EXP, label: 其中：利息费用, level: 2, rule: { kind: accounts, codes: ["6603.01"], sign: debit, source: net } }
+      - { code: "20", key: IS-INV, label: 加：投资收益, level: 1, rule: { kind: accounts, codes: ["6111"], sign: credit, source: net } }
+      - { code: "H-OP", key: IS-OP-SUB, label: 营业收入减各项成本费用, level: 2, hidden: true, rule: { kind: diff, of: ["IS-REV", "IS-COST", "IS-TAX-SUR", "IS-SELL", "IS-ADMIN", "IS-FIN"] } }
+      - { code: "21", key: IS-OP, label: 二、营业利润（亏损以“-”号填列）, level: 0, isTotal: true, rule: { kind: sum, of: ["IS-OP-SUB", "IS-INV"] } }
+      - { code: "22", key: IS-NON-OP-INC, label: 加：营业外收入, level: 1, rule: { kind: accounts, codes: ["6301"], sign: credit, source: net } }
+      - { code: "23", key: IS-GOV-GRANT, label: 其中：政府补助, level: 2, rule: { kind: accounts, codes: ["6301.01"], sign: credit, source: net } }
+      - { code: "24", key: IS-NON-OP-EXP, label: 减：营业外支出, level: 1, rule: { kind: accounts, codes: ["6711"], sign: debit, source: net } }
+      - { code: "25", key: IS-BAD-DEBT, label: 其中：坏账损失, level: 2, rule: { kind: accounts, codes: ["6711.01"], sign: debit, source: net } }
+      - { code: "26", key: IS-BOND-LOSS, label: 无法收回的长期债券投资损失, level: 2, rule: { kind: accounts, codes: ["6711.02"], sign: debit, source: net } }
+      - { code: "27", key: IS-EQUITY-LOSS, label: 无法收回的长期股权投资损失, level: 2, rule: { kind: accounts, codes: ["6711.03"], sign: debit, source: net } }
+      - { code: "28", key: IS-FORCE-LOSS, label: 自然灾害等不可抗力因素造成的损失, level: 2, rule: { kind: accounts, codes: ["6711.04"], sign: debit, source: net } }
+      - { code: "29", key: IS-LATE-FEE, label: 税收滞纳金, level: 2, rule: { kind: accounts, codes: ["6711.05"], sign: debit, source: net } }
+      - { code: "H-PBT", key: IS-OP-INC, label: 营业利润加营业外收入, level: 2, hidden: true, rule: { kind: sum, of: ["IS-OP", "IS-NON-OP-INC"] } }
+      - { code: "30", key: IS-PBT, label: 三、利润总额（亏损总额以“-”号填列）, level: 0, isTotal: true, rule: { kind: diff, of: ["IS-OP-INC", "IS-NON-OP-EXP"] } }
+      - { code: "31", key: IS-TAX-EXP, label: 减：所得税费用, level: 1, rule: { kind: accounts, codes: ["6801"], sign: debit, source: net } }
+      - { code: "32", key: IS-NP, label: 四、净利润（净亏损以“-”号填列）, level: 0, isTotal: true, rule: { kind: diff, of: ["IS-PBT", "IS-TAX-EXP"] } }
+    checks:
+      - id: IS-NET-PROFIT
+        label: 净利润 = 利润总额 − 所得税费用
+        actual: IS-NP
+        expected: { sum: ["IS-PBT"], minus: ["IS-TAX-EXP"] }
+      - id: IS-OP-PROFIT
+        label: 营业利润 = 营业收入 − 营业成本 − 税金及附加 − 期间费用 + 投资收益
+        actual: IS-OP
+        expected: { sum: ["IS-OP-SUB", "IS-INV"] }
+      - id: IS-PBT
+        label: 利润总额 = 营业利润 + 营业外收入 − 营业外支出
+        actual: IS-PBT
+        expected: { sum: ["IS-OP", "IS-NON-OP-INC"], minus: ["IS-NON-OP-EXP"] }
+
+  # ---------------------------------------------------------------------------
+  # 现金流量表（简化参考格式，行次 1-22）
+  # 小企业会计准则未强制要求编制，仅作管理参考。
+  # ---------------------------------------------------------------------------
+  cash_flow:
+    title: 现金流量表（参考格式）
+    notes:
+      - id: CF-SMALL-OPTIONAL
+        level: info
+        text: 小企业会计准则未强制要求编制现金流量表，本表按简化格式生成，仅供参考
+    cashflow:
+      cashAccounts: ["1001", "1002", "1012"]
+      investing: ["1101", "1501", "1502", "1503", "1504", "1511", "1521", "1531", "1601", "1602", "1603", "1604", "1605", "1606", "1611", "1701", "1702", "1703", "1711", "1801", "1131", "1132", "6111", "6115"]
+      financing: ["2001", "2501", "2502", "2701", "2702", "4001", "4002", "4003", "4004", "4101", "4104", "2231", "2232", "6603.01"]
+      items:
+        - { key: CFX-IN-SALES, flow: operating, direction: in, accounts: ["6001", "6051", "1121", "1122", "2203", "1123"] }
+        - { key: CFX-IN-TAX-REFUND, flow: operating, direction: in, accounts: ["2221.01.01"] }
+        - { key: CFX-IN-OTHER-OP, flow: operating, direction: in }
+        - { key: CFX-OUT-PURCHASE, flow: operating, direction: out, accounts: ["1401", "1402", "1403", "1405", "1408", "1471", "2202", "1123", "5001", "5101", "5201"] }
+        - { key: CFX-OUT-STAFF, flow: operating, direction: out, accounts: ["2211"] }
+        - { key: CFX-OUT-TAX, flow: operating, direction: out, accounts: ["2221", "6403", "6801"] }
+        - { key: CFX-OUT-OTHER-OP, flow: operating, direction: out }
+        - { key: CFX-IN-DISPOSE, flow: investing, direction: in, accounts: ["1601", "1602", "1603", "1604", "1606", "1701", "1702", "1801", "6115"] }
+        - { key: CFX-IN-INVEST, flow: investing, direction: in, accounts: ["1101", "1501", "1502", "1503", "1504", "1511", "1521", "1531"] }
+        - { key: CFX-IN-INVEST-INC, flow: investing, direction: in, accounts: ["1131", "1132", "6111"] }
+        - { key: CFX-IN-OTHER-INV, flow: investing, direction: in }
+        - { key: CFX-OUT-BUILD, flow: investing, direction: out, accounts: ["1601", "1602", "1604", "1605", "1611", "1701", "1702", "1711", "1801", "5301.02"] }
+        - { key: CFX-OUT-INVEST, flow: investing, direction: out, accounts: ["1101", "1501", "1502", "1503", "1504", "1511", "1521", "1531"] }
+        - { key: CFX-OUT-OTHER-INV, flow: investing, direction: out }
+        - { key: CFX-IN-CAPITAL, flow: financing, direction: in, accounts: ["4001", "4002", "4003", "4004"] }
+        - { key: CFX-IN-BORROW, flow: financing, direction: in, accounts: ["2001", "2501", "2502", "2701", "2702"] }
+        - { key: CFX-IN-OTHER-FIN, flow: financing, direction: in }
+        - { key: CFX-OUT-REPAY, flow: financing, direction: out, accounts: ["2001", "2501", "2502", "2701", "2702"] }
+        - { key: CFX-OUT-INTEREST, flow: financing, direction: out, accounts: ["6603.01", "2231"] }
+        - { key: CFX-OUT-DIVIDEND, flow: financing, direction: out, accounts: ["2232", "4104"] }
+        - { key: CFX-OUT-OTHER-FIN, flow: financing, direction: out }
+    rows:
+      - { code: "H1", key: CF-H-OP, label: 一、经营活动产生的现金流量, level: 0, rule: { kind: header } }
+      - { code: "1", key: CF-IN-SALES, label: 销售产成品、商品、提供劳务收到的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-SALES", "CFX-IN-TAX-REFUND"] } }
+      - { code: "2", key: CF-IN-OTHER-OP, label: 收到其他与经营活动有关的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-OTHER-OP"] } }
+      - { code: "3", key: CF-OUT-PURCHASE, label: 购买原材料、商品、接受劳务支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-PURCHASE"] } }
+      - { code: "4", key: CF-OUT-STAFF, label: 支付的职工薪酬, level: 1, rule: { kind: sum, of: ["CFX-OUT-STAFF"] } }
+      - { code: "5", key: CF-OUT-TAX, label: 支付的税费, level: 1, rule: { kind: sum, of: ["CFX-OUT-TAX"] } }
+      - { code: "6", key: CF-OUT-OTHER-OP, label: 支付其他与经营活动有关的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-OTHER-OP"] } }
+      - { code: "H-OP-IN", key: CF-IN-OP-TOTAL, label: 经营活动现金流入, level: 2, hidden: true, rule: { kind: sum, of: ["CF-IN-SALES", "CF-IN-OTHER-OP"] } }
+      - { code: "H-OP-OUT", key: CF-OUT-OP-TOTAL, label: 经营活动现金流出, level: 2, hidden: true, rule: { kind: sum, of: ["CF-OUT-PURCHASE", "CF-OUT-STAFF", "CF-OUT-TAX", "CF-OUT-OTHER-OP"] } }
+      - { code: "7", key: CF-OP-NET, label: 经营活动产生的现金流量净额, level: 1, isTotal: true, rule: { kind: diff, of: ["CF-IN-OP-TOTAL", "CF-OUT-OP-TOTAL"] } }
+
+      - { code: "H2", key: CF-H-INV, label: 二、投资活动产生的现金流量, level: 0, rule: { kind: header } }
+      - { code: "8", key: CF-IN-DISPOSE, label: 收回短期投资、长期债券投资和长期股权投资收到的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-INVEST"] } }
+      - { code: "9", key: CF-IN-INVEST-INC, label: 取得投资收益收到的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-INVEST-INC"] } }
+      - { code: "10", key: CF-IN-DISPOSE-ASSET, label: 处置固定资产、无形资产和其他非流动资产收回的现金净额, level: 1, rule: { kind: sum, of: ["CFX-IN-DISPOSE"] } }
+      - { code: "11", key: CF-OUT-INVEST, label: 短期投资、长期债券投资和长期股权投资支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-INVEST"] } }
+      - { code: "12", key: CF-OUT-BUILD, label: 购建固定资产、无形资产和其他非流动资产支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-BUILD"] } }
+      - { code: "H-INV-IN", key: CF-IN-INV-TOTAL, label: 投资活动现金流入, level: 2, hidden: true, rule: { kind: sum, of: ["CF-IN-DISPOSE", "CF-IN-INVEST-INC", "CF-IN-DISPOSE-ASSET"] } }
+      - { code: "H-INV-OUT", key: CF-OUT-INV-TOTAL, label: 投资活动现金流出, level: 2, hidden: true, rule: { kind: sum, of: ["CF-OUT-INVEST", "CF-OUT-BUILD"] } }
+      - { code: "13", key: CF-INV-NET, label: 投资活动产生的现金流量净额, level: 1, isTotal: true, rule: { kind: diff, of: ["CF-IN-INV-TOTAL", "CF-OUT-INV-TOTAL"] } }
+
+      - { code: "H3", key: CF-H-FIN, label: 三、筹资活动产生的现金流量, level: 0, rule: { kind: header } }
+      - { code: "14", key: CF-IN-BORROW, label: 取得借款收到的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-BORROW"] } }
+      - { code: "15", key: CF-IN-CAPITAL, label: 吸收投资者投资收到的现金, level: 1, rule: { kind: sum, of: ["CFX-IN-CAPITAL"] } }
+      - { code: "16", key: CF-OUT-REPAY, label: 偿还借款本金支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-REPAY"] } }
+      - { code: "17", key: CF-OUT-INTEREST, label: 偿还借款利息支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-INTEREST"] } }
+      - { code: "18", key: CF-OUT-DIVIDEND, label: 分配利润支付的现金, level: 1, rule: { kind: sum, of: ["CFX-OUT-DIVIDEND"] } }
+      - { code: "H-FIN-IN", key: CF-IN-FIN-TOTAL, label: 筹资活动现金流入, level: 2, hidden: true, rule: { kind: sum, of: ["CF-IN-BORROW", "CF-IN-CAPITAL"] } }
+      - { code: "H-FIN-OUT", key: CF-OUT-FIN-TOTAL, label: 筹资活动现金流出, level: 2, hidden: true, rule: { kind: sum, of: ["CF-OUT-REPAY", "CF-OUT-INTEREST", "CF-OUT-DIVIDEND", "CFX-OUT-OTHER-FIN"] } }
+      - { code: "19", key: CF-FIN-NET, label: 筹资活动产生的现金流量净额, level: 1, isTotal: true, rule: { kind: diff, of: ["CF-IN-FIN-TOTAL", "CF-OUT-FIN-TOTAL"] } }
+
+      - { code: "20", key: CF-NET-INC, label: 四、现金净增加额, level: 0, isTotal: true, rule: { kind: sum, of: ["CF-OP-NET", "CF-INV-NET", "CF-FIN-NET"] } }
+      - { code: "21", key: CF-BEGIN, label: 加：期初现金余额, level: 1, rule: { kind: sum, of: ["CFX-BEGIN"] } }
+      - { code: "22", key: CF-END, label: 五、期末现金余额, level: 0, isTotal: true, rule: { kind: sum, of: ["CF-BEGIN", "CF-NET-INC"] } }
+    checks:
+      - id: CF-NET
+        label: 经营 + 投资 + 筹资活动现金流量净额 = 现金净增加额
+        actual: CF-NET-INC
+        expected: { sum: ["CF-OP-NET", "CF-INV-NET", "CF-FIN-NET"] }
+      - id: CF-END
+        label: 期末现金余额 = 期初余额 + 净增加额
+        actual: CF-END
+        expected: { sum: ["CF-BEGIN", "CF-NET-INC"] }
+      - id: CF-END-BS
+        label: 期末现金余额 = 资产负债表货币资金
+        actual: CF-END
+        expected: { sum: ["BS-CASH"] }
+
+  # ---------------------------------------------------------------------------
+  # 所有者权益变动表（简化参考格式）
+  # ---------------------------------------------------------------------------
+  equity_change:
+    title: 所有者权益变动表（参考格式）
+    notes:
+      - id: EQ-SMALL-OPTIONAL
+        level: info
+        text: 小企业会计准则未强制要求编制所有者权益变动表，本表按简化格式生成，仅供参考
+    rows:
+      - { code: "H1", key: EQ-H-OPEN, label: 一、上年年末余额, level: 0, rule: { kind: header } }
+      - { code: "1", key: EQ-OPEN-PAID, label: 实收资本, level: 1, rule: { kind: accounts, codes: ["4001"], sign: credit, source: opening } }
+      - { code: "2", key: EQ-OPEN-CAP, label: 资本公积, level: 1, rule: { kind: accounts, codes: ["4002"], sign: credit, source: opening } }
+      - { code: "3", key: EQ-OPEN-SURPLUS, label: 盈余公积, level: 1, rule: { kind: accounts, codes: ["4101"], sign: credit, source: opening } }
+      - { code: "4", key: EQ-OPEN-RETAINED, label: 未分配利润, level: 1, rule: { kind: accounts, codes: ["4103", "4104"], sign: credit, source: opening } }
+      - { code: "5", key: EQ-OPEN-TOTAL, label: 上年年末余额合计, level: 1, isTotal: true, rule: { kind: sum, of: ["EQ-OPEN-PAID", "EQ-OPEN-CAP", "EQ-OPEN-SURPLUS", "EQ-OPEN-RETAINED"] } }
+
+      - { code: "H2", key: EQ-H-MOVE, label: 二、本年增减变动金额（减少以“-”号填列）, level: 0, rule: { kind: header } }
+      - { code: "6", key: EQ-MOV-PAID, label: 实收资本, level: 1, rule: { kind: diff, of: ["EQ-CLOSE-PAID", "EQ-OPEN-PAID"] } }
+      - { code: "7", key: EQ-MOV-CAP, label: 资本公积, level: 1, rule: { kind: diff, of: ["EQ-CLOSE-CAP", "EQ-OPEN-CAP"] } }
+      - { code: "8", key: EQ-MOV-SURPLUS, label: 盈余公积, level: 1, rule: { kind: diff, of: ["EQ-CLOSE-SURPLUS", "EQ-OPEN-SURPLUS"] } }
+      - { code: "9", key: EQ-MOV-RETAINED, label: 未分配利润, level: 1, rule: { kind: diff, of: ["EQ-CLOSE-RETAINED", "EQ-OPEN-RETAINED"] } }
+      - { code: "10", key: EQ-MOV-TOTAL, label: 本年增减变动金额合计, level: 1, isTotal: true, rule: { kind: sum, of: ["EQ-MOV-PAID", "EQ-MOV-CAP", "EQ-MOV-SURPLUS", "EQ-MOV-RETAINED"] } }
+      - { code: "11", key: EQ-MOV-NP, label: 其中：净利润, level: 2, rule: { kind: sum, of: ["EQX-NET-PROFIT"] } }
+
+      - { code: "H3", key: EQ-H-CLOSE, label: 三、本年年末余额, level: 0, rule: { kind: header } }
+      - { code: "12", key: EQ-CLOSE-PAID, label: 实收资本, level: 1, rule: { kind: accounts, codes: ["4001"], sign: credit, source: closing } }
+      - { code: "13", key: EQ-CLOSE-CAP, label: 资本公积, level: 1, rule: { kind: accounts, codes: ["4002"], sign: credit, source: closing } }
+      - { code: "14", key: EQ-CLOSE-SURPLUS, label: 盈余公积, level: 1, rule: { kind: accounts, codes: ["4101"], sign: credit, source: closing } }
+      - { code: "15", key: EQ-CLOSE-RETAINED, label: 未分配利润, level: 1, rule: { kind: accounts, codes: ["4103", "4104"], sign: credit, source: closing } }
+      - { code: "16", key: EQ-CLOSE-TOTAL, label: 本年年末余额合计, level: 1, isTotal: true, rule: { kind: sum, of: ["EQ-CLOSE-PAID", "EQ-CLOSE-CAP", "EQ-CLOSE-SURPLUS", "EQ-CLOSE-RETAINED"] } }
+    checks:
+      - id: EQ-BALANCE
+        label: 本年年末余额 = 上年年末余额 + 本年增减变动金额
+        actual: EQ-CLOSE-TOTAL
+        expected: { sum: ["EQ-OPEN-TOTAL", "EQ-MOV-TOTAL"] }
+      - id: EQ-COMPONENT
+        label: 权益变动合计 = 各组成部分变动之和
+        actual: EQ-MOV-TOTAL
+        expected: { sum: ["EQ-MOV-PAID", "EQ-MOV-CAP", "EQ-MOV-SURPLUS", "EQ-MOV-RETAINED"] }

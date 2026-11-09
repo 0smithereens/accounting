@@ -1,0 +1,273 @@
+# =============================================================================
+# 会计准则档案（两套准则的「差异总开关」）
+# =============================================================================
+# 这个文件回答三个问题，全系统只在这里回答一次：
+#   1. 这家企业适用哪套准则（settings.yaml 的 accountingStandard）→ 用哪张科目表、哪套规则、
+#      哪套报表格式；
+#   2. 两套准则在业务处理上到底差在哪（features 十二个开关）→ 核算/审核/报表/税务引擎按开关分支，
+#      而不是到处写 if (accountCode === '1811')；
+#   3. 哪些科目在本准则下根本不允许出现（forbiddenAccounts）→ 审核引擎逐条判定。
+#
+# ⚠ forbiddenAccounts 的双重判定（最容易写错的地方）
+#   两套准则的编码体系不同，同一编码可能指向完全不同的科目：
+#     5301 = 企业准则「研发支出」 = 小企业准则「营业外收入」
+#     4001 = 企业准则「实收资本」 = 小企业准则「生产成本」
+#     1501 = 企业准则「持有至到期投资」 = 小企业准则「长期债券投资」
+#   所以：
+#     · 只写字符串（如 - "1811"）= 该编码无条件禁用（本级及其下级科目）；
+#     · 写成对象并带 name  = 只有「编码 + 名称都对得上」才算禁用，
+#       用于处理上述「同号不同科目」的情况，避免把合法的「5301 营业外收入」误判成禁用。
+#   判定入口只有一个：src/core/standard/profiles.ts 的 checkAccountAllowed()。
+#   消费方禁止直接做 forbiddenAccounts.includes(code) 判断。
+#
+# 法规依据（basis）的 id 在本文件内唯一，forbiddenAccounts 用 basisRefs 引用，
+# 避免同一条法规在几十个条目里重复抄写、抄错。
+# =============================================================================
+
+standards:
+  # ===========================================================================
+  # 企业会计准则（大企业 / 上市公司 / 需要公允价值、减值、递延所得税的企业）
+  # ===========================================================================
+  - id: cas
+    label: 企业会计准则
+    summary: 以公允价值、资产负债表观为核心，要求计提减值、确认递延所得税、按五步法确认收入，适用于大中型企业及需要对外融资、上市的企业。
+    basis:
+      - id: cas-basic
+        title: 企业会计准则——基本准则
+        article: 财政部令第 33 号
+        excerpt: 企业应当以权责发生制为基础进行会计确认、计量和报告；会计计量属性包括历史成本、重置成本、可变现净值、现值和公允价值。
+        effectiveFrom: "2007-01-01"
+        level: departmental-rule
+      - id: cas-appendix
+        title: 企业会计准则——应用指南（附录：会计科目和主要账务处理）
+        article: 财会〔2006〕18 号
+        effectiveFrom: "2007-01-01"
+        level: normative-document
+      - id: cas-18
+        title: 企业会计准则第 18 号——所得税
+        article: 财会〔2006〕3 号
+        excerpt: 企业应当采用资产负债表债务法确认递延所得税资产和递延所得税负债。
+        effectiveFrom: "2007-01-01"
+        level: departmental-rule
+      - id: cas-8
+        title: 企业会计准则第 8 号——资产减值
+        article: 财会〔2006〕3 号
+        excerpt: 企业应当在资产负债表日判断资产是否存在可能发生减值的迹象，存在减值迹象的应当估计其可收回金额并计提减值准备。
+        effectiveFrom: "2007-01-01"
+        level: departmental-rule
+      - id: cas-14
+        title: 企业会计准则第 14 号——收入（2017 年修订）
+        article: 财会〔2017〕22 号
+        excerpt: 企业应当在履行了合同中的履约义务，即在客户取得相关商品控制权时确认收入（五步法）。
+        effectiveFrom: "2020-01-01"
+        level: departmental-rule
+      - id: cas-21
+        title: 企业会计准则第 21 号——租赁（2018 年修订）
+        article: 财会〔2018〕35 号
+        excerpt: 承租人应当在租赁期开始日确认使用权资产和租赁负债。
+        effectiveFrom: "2021-01-01"
+        level: departmental-rule
+      - id: cas-2
+        title: 企业会计准则第 2 号——长期股权投资（2014 年修订）
+        article: 财会〔2014〕14 号
+        excerpt: 投资方对联营企业和合营企业的长期股权投资，应当采用权益法核算。
+        effectiveFrom: "2014-07-01"
+        level: departmental-rule
+      - id: cas-28
+        title: 企业会计准则第 28 号——会计政策、会计估计变更和差错更正
+        article: 财会〔2006〕3 号
+        excerpt: 企业应当采用追溯重述法更正重要的前期差错，通过「以前年度损益调整」科目核算。
+        effectiveFrom: "2007-01-01"
+        level: departmental-rule
+    chartFile: config/standard/cas/chart-of-accounts.yaml
+    mappingDir: config/mappings
+    statementFile: config/report/statements-cas.yaml
+    features:
+      deferredTax: true
+      fairValueMeasurement: true
+      assetImpairment: true
+      developmentCapitalization: true
+      revenueFiveStep: true
+      equityMethod: true
+      borrowingCostCapitalization: true
+      leaseCapitalization: true
+      priorPeriodAdjustment: true
+      cashFlowStatement: true
+      equityStatement: true
+      notesRequired: true
+    # 企业会计准则没有「禁用科目」：只要科目表里有就能用
+    forbiddenAccounts: []
+    requiredClosingAccounts:
+      - "4103"
+      - "4104"
+
+  # ===========================================================================
+  # 小企业会计准则（符合《中小企业划型标准规定》的小型企业）
+  # ===========================================================================
+  - id: small
+    label: 小企业会计准则
+    summary: 以历史成本、简化核算为核心，不计提减值、不确认递延所得税、不资本化租赁，适用于符合《中小企业划型标准规定》的小型企业。
+    basis:
+      - id: small-standard
+        title: 小企业会计准则
+        article: 财会〔2011〕17 号
+        excerpt: 本准则适用于在中华人民共和国境内依法设立的、符合《中小企业划型标准规定》所规定的小型企业标准的企业。
+        effectiveFrom: "2013-01-01"
+        level: departmental-rule
+      - id: small-appendix
+        title: 小企业会计准则——会计科目、主要账务处理和财务报表
+        article: 财会〔2011〕17 号 附件
+        excerpt: 会计科目和主要账务处理依据小企业会计准则中确认和计量的规定制定，涵盖了各类小企业的交易和事项。
+        effectiveFrom: "2013-01-01"
+        level: normative-document
+      - id: small-art9
+        title: 小企业会计准则
+        article: 第九条
+        excerpt: 小企业的资产应当按照成本计量，不计提资产减值准备。
+        effectiveFrom: "2013-01-01"
+        level: departmental-rule
+      - id: small-art78
+        title: 小企业会计准则
+        article: 第七十八条
+        excerpt: 小企业的财务报表至少应当包括资产负债表、利润表、现金流量表和附注。
+        effectiveFrom: "2013-01-01"
+        level: departmental-rule
+      - id: cit-law
+        title: 中华人民共和国企业所得税法
+        article: 第五十四条
+        excerpt: 企业所得税分月或者分季预缴，企业应当自年度终了之日起五个月内，向税务机关报送年度企业所得税纳税申报表，并汇算清缴，结清应缴应退税款。
+        effectiveFrom: "2008-01-01"
+        level: law
+    chartFile: config/standard/small/chart-of-accounts.yaml
+    # 小企业准则的编码体系与企业准则完全不同（同一编码指向不同科目），
+    # 因此不能复用 config/mappings，必须另建一套规则文件。
+    # 迁移时的编码对照（企业准则 → 小企业准则，一级科目层面）：
+    #   4001 实收资本 → 3001 实收资本      4002 资本公积 → 3002 资本公积
+    #   4101 盈余公积 → 3101 盈余公积      4103 本年利润 → 3103 本年利润
+    #   4104 利润分配 → 3104 利润分配      5001 生产成本 → 4001 生产成本
+    #   5101 制造费用 → 4101 制造费用      5201 劳务成本 → 4001 生产成本（或 4002）
+    #   5301 研发支出 → 5602 管理费用      6001 主营业务收入 → 5001 主营业务收入
+    #   6051 其他业务收入 → 5051 其他业务收入  6111 投资收益 → 5111 投资收益
+    #   6301 营业外收入 → 5301 营业外收入  6401 主营业务成本 → 5401 主营业务成本
+    #   6402 其他业务成本 → 5402 其他业务成本  6403 税金及附加 → 5403 税金及附加
+    #   6601 销售费用 → 5601 销售费用      6602 管理费用 → 5602 管理费用
+    #   6603 财务费用 → 5603 财务费用      6711 营业外支出 → 5711 营业外支出
+    #   6801 所得税费用 → 5801 所得税费用  2232 应付股利 → 2232 应付利润
+    #   资产/负债类编码大多相同（1001-2501），可直接沿用。
+    mappingDir: config/standard/small/mappings
+    statementFile: config/report/statements-small.yaml
+    features:
+      # 应付税款法：只确认当期应交所得税
+      deferredTax: false
+      # 投资、投资性房地产一律按成本计量
+      fairValueMeasurement: false
+      # 第九条：资产按成本计量，不计提减值准备
+      assetImpairment: false
+      # 研发支出在管理费用列支，不设开发支出项目、不资本化披露
+      developmentCapitalization: false
+      # 收入按四项条件确认，不设合同资产/合同负债、不拆分重大融资成分
+      revenueFiveStep: false
+      # 长期股权投资一律成本法
+      equityMethod: false
+      # 允许资本化，但按合同利率与实际支出简化计算，不计算一般借款资本化率
+      borrowingCostCapitalization: true
+      # 经营租赁不确认使用权资产/租赁负债
+      leaseCapitalization: false
+      # 会计政策变更与差错更正采用未来适用法
+      priorPeriodAdjustment: false
+      # 准则第七十八条要求编制现金流量表
+      cashFlowStatement: true
+      # 不要求编制所有者权益变动表
+      equityStatement: false
+      # 准则第七十八条要求编制附注（内容显著简化）
+      notesRequired: true
+    forbiddenAccounts:
+      # 规则说明：
+      #   · 只写编码（字符串）= 该编码无条件禁用，含其下级明细科目；
+      #   · 写 code + name      = 只有名称也对得上才禁用，用于「同号不同科目」的情况。
+      #   · 同一编码只允许出现一次，重复会被 loadStandardRegistry() 判为配置错误，
+      #     因为重复会让「哪条理由生效」变得不可预测。
+      #
+      # ---- 一、本准则根本没有的科目（编码无条件禁用） ----
+      # 减值准备类
+      - code: "1231"
+        feature: assetImpairment
+        reason: 科目「1231 坏账准备」不得在小企业会计准则下使用。小企业会计准则第九条要求资产按成本计量、不计提资产减值准备，坏账于实际发生时直接计入营业外支出。
+        basisRefs: [small-art9, small-appendix]
+      - code: "1471"
+        feature: assetImpairment
+        reason: 科目「1471 存货跌价准备」不得在小企业会计准则下使用。小企业会计准则不计提存货跌价准备，存货一律按成本计量，期末不按可变现净值调整。
+        basisRefs: [small-art9]
+      - code: "1502"
+      - code: "1603"
+        feature: assetImpairment
+        reason: 科目「1603 固定资产减值准备」不得在小企业会计准则下使用。小企业会计准则第九条要求资产按成本计量、不计提资产减值准备。
+        basisRefs: [small-art9]
+      - code: "1703"
+        feature: assetImpairment
+        reason: 科目「1703 无形资产减值准备」不得在小企业会计准则下使用。小企业会计准则第九条要求资产按成本计量、不计提资产减值准备。
+        basisRefs: [small-art9]
+      - code: "6701"
+        feature: assetImpairment
+        reason: 科目「6701 资产减值损失」不得在小企业会计准则下使用。小企业会计准则不计提资产减值准备，故不存在减值损失科目；存货毁损、资产报废损失计入营业外支出。
+        basisRefs: [small-art9]
+      - code: "6702"
+        feature: assetImpairment
+        reason: 科目「6702 信用减值损失」不得在小企业会计准则下使用。小企业会计准则不计提预期信用损失，应收款项坏账于实际发生时直接计入营业外支出。
+        basisRefs: [small-art9]
+      # 递延所得税类
+      - code: "1811"
+        feature: deferredTax
+        reason: 科目「1811 递延所得税资产」不得在小企业会计准则下使用。小企业会计准则的所得税采用应付税款法，只确认当期应交所得税（5801），不确认递延所得税资产与递延所得税负债。
+        basisRefs: [small-appendix, cit-law]
+      - code: "2901"
+        feature: deferredTax
+        reason: 科目「2901 递延所得税负债」不得在小企业会计准则下使用。小企业会计准则的所得税采用应付税款法，不确认递延所得税资产与递延所得税负债。
+        basisRefs: [small-appendix, cit-law]
+      # 公允价值计量类
+      - code: "1503"
+      - code: "1504"
+      - code: "1521"
+      - code: "6101"
+      # 其他企业会计准则专属科目
+      - code: "1512"
+      - code: "1612"
+      - code: "1613"
+      - code: "2703"
+      - code: "1711"
+      - code: "4003"
+      - code: "4201"
+      - code: "6901"
+        feature: priorPeriodAdjustment
+        reason: 科目「6901 以前年度损益调整」不得在小企业会计准则下使用。小企业会计准则对会计政策变更和差错更正采用未来适用法，不追溯调整以前年度损益。
+        basisRefs: [small-appendix, small-standard]
+      #
+      # ---- 二、与企业准则同号、但本准则另有含义的科目（编码 + 名称双重判定） ----
+      # 1101 在小企业准则下是「短期投资」（合法），只有名称仍是「交易性金融资产」时才禁用
+      - code: "1101"
+        name: 交易性金融资产
+        feature: fairValueMeasurement
+        reason: 科目「1101 交易性金融资产」属于企业会计准则专属科目。小企业会计准则下 1101 为「短期投资」，按成本计量且不按公允价值调整，因此不得再以「交易性金融资产」的名义使用该编码。
+        basisRefs: [small-appendix, small-art9]
+      # 1501 在小企业准则下是「长期债券投资」（合法）
+      - code: "1501"
+        name: 持有至到期投资
+        feature: fairValueMeasurement
+        reason: 科目「1501 持有至到期投资」属于企业会计准则专属科目。小企业会计准则下 1501 为「长期债券投资」，按成本计量、不采用实际利率法摊销，因此不得再以「持有至到期投资」的名义使用该编码。
+        basisRefs: [small-appendix, small-art9]
+      # 1511 在部分软件/教材中是「持有至到期投资」（企业准则官方编码为 1501）。
+      # 该编码在小企业准则下是「长期股权投资」，故同样按名称判定。
+      - code: "1511"
+        name: 持有至到期投资
+        feature: fairValueMeasurement
+        reason: 科目「1511 持有至到期投资」属于企业会计准则专属科目（部分软件把该账户编为 1511，官方应用指南编码为 1501）。小企业会计准则下 1511 为「长期股权投资」且一律采用成本法，因此不得再以「持有至到期投资」的名义使用该编码。
+        basisRefs: [small-appendix, small-art9]
+      # 5301 在小企业准则下是「营业外收入」（合法，且是常用科目）
+      - code: "5301"
+        name: 研发支出
+        feature: developmentCapitalization
+        reason: 科目「5301 研发支出」属于企业会计准则专属科目。小企业会计准则下研发支出直接计入「管理费用」，不单独资本化；5301 在小企业会计准则中是「营业外收入」，因此不得再以「研发支出」的名义使用该编码。
+        basisRefs: [small-appendix, small-standard]
+    requiredClosingAccounts:
+      - "3103"
+      - "3104"

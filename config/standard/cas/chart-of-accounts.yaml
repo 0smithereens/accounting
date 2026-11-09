@@ -1,0 +1,374 @@
+# =============================================================================
+# 会计科目表 —— 企业会计准则（一般企业）
+# =============================================================================
+# 制定依据：
+#   《企业会计准则——应用指南》（财会〔2006〕18 号）附录「会计科目和主要账务处理」，
+#   并按后续修订补充：
+#     · 财会〔2014〕7 号  —— 新增「其他综合收益」科目
+#     · 财会〔2017〕7 号  —— 金融工具确认和计量（1501/1502/1503/1504）
+#     · 财会〔2017〕22 号 —— 收入（合同资产/合同负债，实务中用「应收账款」「预收账款」明细替代）
+#     · 财会〔2017〕30 号 —— 新增「资产处置损益」科目
+#     · 财会〔2018〕35 号 —— 租赁（使用权资产、租赁负债）
+#
+# 与旧科目表 config/chart-of-accounts.yaml 的关系：
+#   本文件是旧表的**超集**：旧表所有科目编码、名称、辅助核算、defaultChild 全部原样保留，
+#   因此 config/mappings/*.yaml 里的记账规则无需任何修改即可继续使用。
+#   凡旧表中「有下级、且规则会引用」的上级科目（1002 银行存款 / 1221 其他应收款 /
+#   6001 主营业务收入），本文件都保留了 defaultChild，保证规则引用上级科目时仍能
+#   自动下钻到明细科目。
+#
+# ⚠ 编码重号警告（写跨准则代码时必读）：
+#   两套准则的编码体系不同——企业会计准则 1/2/3(无)/4 权益/5 成本/6 损益，
+#   小企业会计准则 1 资产/2 负债/3 权益/4 成本/5 损益。
+#   同一编码在另一套准则里可能指向完全不同的科目：
+#     4001 = 企业会计准则「实收资本」        = 小企业会计准则「生产成本」
+#     4301 = 企业会计准则「其他综合收益」？  = 小企业会计准则「研发支出」
+#     5301 = 企业会计准则「研发支出」        = 小企业会计准则「营业外收入」
+#   所以准则切换时的科目准入判定必须「编码 + 名称」一起比，见
+#   src/core/standard/profiles.ts 的 checkAccountAllowed()。
+#
+# 字段说明（与旧表完全一致）：
+#   code        科目编码，用 . 分隔层级
+#   name        科目名称
+#   category    asset 资产 / liability 负债 / equity 所有者权益 / cost 成本 / profit 损益
+#   balanceSide debit 借方余额 / credit 贷方余额（不填按 category 推断）
+#   parent      上级科目编码（不填按编码前缀自动推断）
+#   leaf        是否为明细科目（不填则自动推断：有下级即非明细）
+#   defaultChild 默认下钻的明细科目（规则引用上级科目时自动改用）
+#   auxiliary   允许的辅助核算维度：department/customer/supplier/employee/project
+#   note        备注（写清为什么这样设，而不是复述科目名）
+#
+# 维护约定：
+#   1. 新增科目只往下加，不要改已有 code / name：改 code 会让历史凭证与规则失效。
+#   2. 已被 config/mappings 引用的编码不得变为「有下级但无 defaultChild」，
+#      否则生成凭证时会告警「科目还有下级且未配置 defaultChild」。
+#   3. 「使用权资产」「租赁负债」「资产处置损益」「其他综合收益」等新准则科目的编号
+#      财政部的应用指南未统一规定，本表选用的是应用指南里的**空号**（1612/1613、
+#      2703、6115、4003），不与既有科目冲突，切换时只需与账套设置保持一致。
+# =============================================================================
+
+accounts:
+  # ===========================================================================
+  # 一、资产类
+  # ===========================================================================
+  - { code: "1001", name: 库存现金, category: asset, note: "有外币现金的，可另设 1001.01 人民币 / 1001.02 外币" }
+  - { code: "1002", name: 银行存款, category: asset, defaultChild: "1002.01" }
+  - { code: "1002.01", name: 基本户, category: asset, parent: "1002" }
+  - { code: "1002.02", name: 一般户, category: asset, parent: "1002" }
+  - { code: "1002.03", name: 外币户, category: asset, parent: "1002" }
+  - { code: "1002.04", name: 保证金户, category: asset, parent: "1002" }
+  - { code: "1012", name: 其他货币资金, category: asset, defaultChild: "1012.01" }
+  - { code: "1012.01", name: 定期存款, category: asset, parent: "1012" }
+  - { code: "1012.02", name: 银行承兑汇票保证金, category: asset, parent: "1012" }
+  - { code: "1012.03", name: 外埠存款, category: asset, parent: "1012" }
+  - { code: "1012.04", name: 信用证保证金, category: asset, parent: "1012" }
+  - { code: "1012.05", name: 存出投资款, category: asset, parent: "1012" }
+  - { code: "1101", name: 交易性金融资产, category: asset, note: "以公允价值计量且其变动计入当期损益；小企业会计准则下无此科目（对应「短期投资」按成本计量）" }
+  - { code: "1121", name: 应收票据, category: asset, auxiliary: [customer], defaultChild: "1121.01" }
+  - { code: "1121.01", name: 银行承兑汇票, category: asset, parent: "1121", auxiliary: [customer] }
+  - { code: "1121.02", name: 商业承兑汇票, category: asset, parent: "1121", auxiliary: [customer] }
+  - { code: "1122", name: 应收账款, category: asset, auxiliary: [customer] }
+  - { code: "1123", name: 预付账款, category: asset, auxiliary: [supplier] }
+  - { code: "1131", name: 应收股利, category: asset }
+  - { code: "1132", name: 应收利息, category: asset }
+  - { code: "1221", name: 其他应收款, category: asset, auxiliary: [employee, project], defaultChild: "1221.03" }
+  - { code: "1221.01", name: 备用金, category: asset, parent: "1221", auxiliary: [employee] }
+  - { code: "1221.02", name: 员工借款, category: asset, parent: "1221", auxiliary: [employee] }
+  - { code: "1221.03", name: 其他往来款, category: asset, parent: "1221" }
+  - { code: "1221.04", name: 押金及保证金, category: asset, parent: "1221" }
+  - { code: "1231", name: 坏账准备, category: asset, balanceSide: credit, note: "新金融工具准则下用「信用减值损失」计提；小企业会计准则不计提" }
+  - { code: "1401", name: 材料采购, category: asset }
+  - { code: "1402", name: 在途物资, category: asset }
+  - { code: "1403", name: 原材料, category: asset, note: "明细科目按材料品类自行设置；规则直接引用本编码，故不再细分以免下钻失效" }
+  - { code: "1404", name: 材料成本差异, category: asset, balanceSide: debit, note: "计划成本法下使用，借方为超支差异、贷方为节约差异" }
+  - { code: "1405", name: 库存商品, category: asset, defaultChild: "1405.01" }
+  - { code: "1405.01", name: 库存产成品, category: asset, parent: "1405" }
+  - { code: "1405.02", name: 外购商品, category: asset, parent: "1405" }
+  - { code: "1406", name: 发出商品, category: asset, note: "已发出但不满足收入确认条件的商品" }
+  - { code: "1407", name: 商品进销差价, category: asset, balanceSide: credit, note: "售价金额核算法下使用" }
+  - { code: "1408", name: 委托加工物资, category: asset }
+  - { code: "1411", name: 周转材料, category: asset, defaultChild: "1411.02" }
+  - { code: "1411.01", name: 包装物, category: asset, parent: "1411" }
+  - { code: "1411.02", name: 低值易耗品, category: asset, parent: "1411" }
+  - { code: "1411.03", name: 模板及脚手架, category: asset, parent: "1411", note: "建筑施工企业专用" }
+  - { code: "1421", name: 消耗性生物资产, category: asset }
+  - { code: "1471", name: 存货跌价准备, category: asset, balanceSide: credit, note: "小企业会计准则不计提减值，无此科目" }
+  - { code: "1501", name: 持有至到期投资, category: asset, defaultChild: "1501.01", note: "2006 年应用指南编码。已执行新金融工具准则的企业改用「1501 债权投资」；部分软件/教材把本账户编为 1511，本系统两种编码都按名称识别" }
+  - { code: "1501.01", name: 债券投资, category: asset, parent: "1501" }
+  - { code: "1502", name: 持有至到期投资减值准备, category: asset, balanceSide: credit }
+  - { code: "1503", name: 可供出售金融资产, category: asset, defaultChild: "1503.01", note: "已执行新金融工具准则的企业改用「1503 其他债权投资」；小企业会计准则无此科目" }
+  - { code: "1503.01", name: 股票投资, category: asset, parent: "1503" }
+  - { code: "1503.02", name: 债券投资, category: asset, parent: "1503" }
+  - { code: "1504", name: 其他权益工具投资, category: asset, note: "新金融工具准则新增，指定为以公允价值计量且变动计入其他综合收益的权益投资" }
+  - { code: "1511", name: 长期股权投资, category: asset, defaultChild: "1511.01" }
+  - { code: "1511.01", name: 成本法核算, category: asset, parent: "1511" }
+  - { code: "1511.02", name: 权益法核算, category: asset, parent: "1511" }
+  - { code: "1512", name: 长期股权投资减值准备, category: asset, balanceSide: credit }
+  - { code: "1521", name: 投资性房地产, category: asset, defaultChild: "1521.01", note: "小企业会计准则无此科目，投资性房地产分别在固定资产/无形资产核算" }
+  - { code: "1521.01", name: 成本模式计量, category: asset, parent: "1521" }
+  - { code: "1521.02", name: 公允价值模式计量, category: asset, parent: "1521" }
+  - { code: "1531", name: 长期应收款, category: asset, note: "分期收款销售、融资租赁应收款等" }
+  - { code: "1532", name: 未实现融资收益, category: asset, balanceSide: credit }
+  - { code: "1601", name: 固定资产, category: asset, note: "有下级明细，规则请直接引用具体明细科目（如 1601.04 电子设备）" }
+  - { code: "1601.01", name: 房屋建筑物, category: asset, parent: "1601" }
+  - { code: "1601.02", name: 机器设备, category: asset, parent: "1601" }
+  - { code: "1601.03", name: 运输工具, category: asset, parent: "1601" }
+  - { code: "1601.04", name: 电子设备, category: asset, parent: "1601" }
+  - { code: "1601.05", name: 办公家具, category: asset, parent: "1601" }
+  - { code: "1602", name: 累计折旧, category: asset, balanceSide: credit }
+  - { code: "1603", name: 固定资产减值准备, category: asset, balanceSide: credit }
+  - { code: "1604", name: 在建工程, category: asset, defaultChild: "1604.01" }
+  - { code: "1604.01", name: 建筑工程, category: asset, parent: "1604" }
+  - { code: "1604.02", name: 安装工程, category: asset, parent: "1604" }
+  - { code: "1604.03", name: 技术改造工程, category: asset, parent: "1604" }
+  - { code: "1604.04", name: 待摊支出, category: asset, parent: "1604" }
+  - { code: "1605", name: 工程物资, category: asset, defaultChild: "1605.01" }
+  - { code: "1605.01", name: 专用材料, category: asset, parent: "1605" }
+  - { code: "1605.02", name: 专用设备, category: asset, parent: "1605" }
+  - { code: "1605.03", name: 工器具, category: asset, parent: "1605" }
+  - { code: "1606", name: 固定资产清理, category: asset }
+  - { code: "1611", name: 未担保余值, category: asset }
+  - { code: "1612", name: 使用权资产, category: asset, note: "财会〔2018〕35 号新增；1612 在应用指南中为空号，故占用之以避免与既有科目冲突。小企业会计准则不确认" }
+  - { code: "1613", name: 使用权资产累计折旧, category: asset, balanceSide: credit, note: "使用权资产的备抵科目，与 1602 累计折旧分开，便于报表单独列示" }
+  - { code: "1621", name: 生产性生物资产, category: asset }
+  - { code: "1622", name: 生产性生物资产累计折旧, category: asset, balanceSide: credit }
+  - { code: "1623", name: 公益性生物资产, category: asset }
+  - { code: "1631", name: 油气资产, category: asset }
+  - { code: "1632", name: 累计折耗, category: asset, balanceSide: credit }
+  - { code: "1701", name: 无形资产, category: asset, defaultChild: "1701.01" }
+  - { code: "1701.01", name: 软件, category: asset, parent: "1701" }
+  - { code: "1701.02", name: 专利权, category: asset, parent: "1701" }
+  - { code: "1701.03", name: 非专利技术, category: asset, parent: "1701" }
+  - { code: "1701.04", name: 商标权, category: asset, parent: "1701" }
+  - { code: "1701.05", name: 土地使用权, category: asset, parent: "1701" }
+  - { code: "1701.06", name: 著作权, category: asset, parent: "1701" }
+  - { code: "1701.07", name: 特许经营权, category: asset, parent: "1701" }
+  - { code: "1702", name: 累计摊销, category: asset, balanceSide: credit }
+  - { code: "1703", name: 无形资产减值准备, category: asset, balanceSide: credit }
+  - { code: "1711", name: 商誉, category: asset, note: "非同一控制下企业合并形成；减值一经计提不得转回" }
+  - { code: "1801", name: 长期待摊费用, category: asset, defaultChild: "1801.01" }
+  - { code: "1801.01", name: 经营租赁固定资产改良支出, category: asset, parent: "1801" }
+  - { code: "1801.02", name: 其他长期待摊费用, category: asset, parent: "1801" }
+  - { code: "1811", name: 递延所得税资产, category: asset, note: "资产负债表债务法；小企业会计准则采用应付税款法，无此科目" }
+  - { code: "1901", name: 待处理财产损溢, category: asset, note: "系统兜底科目：未匹配规则或借贷不平时临时挂账，必须人工清理，期末不得有余额" }
+
+  # ===========================================================================
+  # 二、负债类
+  # ===========================================================================
+  - { code: "2001", name: 短期借款, category: liability }
+  - { code: "2201", name: 应付票据, category: liability, auxiliary: [supplier], defaultChild: "2201.01" }
+  - { code: "2201.01", name: 银行承兑汇票, category: liability, parent: "2201", auxiliary: [supplier] }
+  - { code: "2201.02", name: 商业承兑汇票, category: liability, parent: "2201", auxiliary: [supplier] }
+  - { code: "2202", name: 应付账款, category: liability, auxiliary: [supplier] }
+  - { code: "2203", name: 预收账款, category: liability, auxiliary: [customer] }
+  - { code: "2211", name: 应付职工薪酬, category: liability, defaultChild: "2211.01" }
+  - { code: "2211.01", name: 工资, category: liability, parent: "2211", auxiliary: [department] }
+  - { code: "2211.02", name: 社会保险费, category: liability, parent: "2211" }
+  - { code: "2211.03", name: 住房公积金, category: liability, parent: "2211" }
+  - { code: "2211.04", name: 职工福利费, category: liability, parent: "2211" }
+  - { code: "2211.05", name: 工会经费, category: liability, parent: "2211" }
+  - { code: "2211.06", name: 职工教育经费, category: liability, parent: "2211" }
+  - { code: "2211.07", name: 非货币性福利, category: liability, parent: "2211" }
+  - { code: "2211.08", name: 辞退福利, category: liability, parent: "2211" }
+  - { code: "2221", name: 应交税费, category: liability, defaultChild: "2221.02" }
+  - { code: "2221.01", name: 应交增值税, category: liability, parent: "2221", note: "一般纳税人按专栏设置下级；明细科目由本表统一规定，便于自动生成增值税分录" }
+  - { code: "2221.01.01", name: 进项税额, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏：记录可抵扣进项，余额天然在借方" }
+  - { code: "2221.01.02", name: 销项税额, category: liability, parent: "2221.01" }
+  - { code: "2221.01.03", name: 已交税金, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏" }
+  - { code: "2221.01.04", name: 转出未交增值税, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏；月末与「未交增值税」配对结转" }
+  - { code: "2221.01.05", name: 进项税额转出, category: liability, parent: "2221.01" }
+  - { code: "2221.01.06", name: 转出多交增值税, category: liability, parent: "2221.01" }
+  - { code: "2221.01.07", name: 减免税款, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏" }
+  - { code: "2221.01.08", name: 出口退税, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏" }
+  - { code: "2221.01.09", name: 待认证进项税额, category: liability, balanceSide: debit, parent: "2221.01", note: "借方专栏；发票已取得尚未勾选认证时暂挂" }
+  - { code: "2221.01.10", name: 待转销项税额, category: liability, parent: "2221.01", note: "已确认收入但纳税义务尚未发生时暂挂" }
+  - { code: "2221.02", name: 未交增值税, category: liability, parent: "2221" }
+  - { code: "2221.03", name: 应交企业所得税, category: liability, parent: "2221" }
+  - { code: "2221.04", name: 应交个人所得税, category: liability, parent: "2221" }
+  - { code: "2221.05", name: 应交城市维护建设税, category: liability, parent: "2221" }
+  - { code: "2221.06", name: 应交教育费附加, category: liability, parent: "2221" }
+  - { code: "2221.07", name: 应交地方教育附加, category: liability, parent: "2221" }
+  - { code: "2221.08", name: 印花税, category: liability, parent: "2221" }
+  - { code: "2221.09", name: 房产税, category: liability, parent: "2221" }
+  - { code: "2221.10", name: 土地使用税, category: liability, parent: "2221" }
+  - { code: "2221.11", name: 车船税, category: liability, parent: "2221" }
+  - { code: "2221.12", name: 消费税, category: liability, parent: "2221" }
+  - { code: "2221.13", name: 资源税, category: liability, parent: "2221" }
+  - { code: "2221.14", name: 环境保护税, category: liability, parent: "2221" }
+  - { code: "2231", name: 应付利息, category: liability }
+  - { code: "2232", name: 应付股利, category: liability }
+  - { code: "2241", name: 其他应付款, category: liability, defaultChild: "2241.03" }
+  - { code: "2241.01", name: 社保个人部分, category: liability, parent: "2241" }
+  - { code: "2241.02", name: 住房公积金个人部分, category: liability, parent: "2241" }
+  - { code: "2241.03", name: 往来款, category: liability, parent: "2241" }
+  - { code: "2241.04", name: 员工报销款, category: liability, parent: "2241", auxiliary: [employee], note: "settings.expenseCreditAccount 的默认值；银行付款时冲减本户，避免银行存款记两次" }
+  - { code: "2241.05", name: 押金及保证金, category: liability, parent: "2241" }
+  - { code: "2401", name: 递延收益, category: liability, defaultChild: "2401.01", note: "政府补助中与资产相关或需递延确认的部分" }
+  - { code: "2401.01", name: 政府补助, category: liability, parent: "2401" }
+  - { code: "2501", name: 长期借款, category: liability }
+  - { code: "2502", name: 应付债券, category: liability, defaultChild: "2502.01" }
+  - { code: "2502.01", name: 面值, category: liability, parent: "2502" }
+  - { code: "2502.02", name: 利息调整, category: liability, parent: "2502" }
+  - { code: "2502.03", name: 应计利息, category: liability, parent: "2502" }
+  - { code: "2701", name: 长期应付款, category: liability }
+  - { code: "2702", name: 未确认融资费用, category: liability, balanceSide: debit, note: "长期应付款的备抵科目，借方余额" }
+  - { code: "2703", name: 租赁负债, category: liability, defaultChild: "2703.01", note: "财会〔2018〕35 号新增；2703 在应用指南中为空号。小企业会计准则不确认" }
+  - { code: "2703.01", name: 租赁付款额, category: liability, parent: "2703" }
+  - { code: "2703.02", name: 未确认融资费用, category: liability, parent: "2703" }
+  - { code: "2711", name: 专项应付款, category: liability }
+  - { code: "2801", name: 预计负债, category: liability, defaultChild: "2801.05" }
+  - { code: "2801.01", name: 对外提供担保, category: liability, parent: "2801" }
+  - { code: "2801.02", name: 未决诉讼, category: liability, parent: "2801" }
+  - { code: "2801.03", name: 产品质量保证, category: liability, parent: "2801" }
+  - { code: "2801.04", name: 重组义务, category: liability, parent: "2801" }
+  - { code: "2801.05", name: 弃置费用, category: liability, parent: "2801" }
+  - { code: "2901", name: 递延所得税负债, category: liability, note: "小企业会计准则采用应付税款法，无此科目" }
+
+  # ===========================================================================
+  # 三、所有者权益类
+  # ===========================================================================
+  - { code: "4001", name: 实收资本, category: equity, note: "股份有限公司可改称「股本」" }
+  - { code: "4002", name: 资本公积, category: equity, defaultChild: "4002.01" }
+  - { code: "4002.01", name: 资本溢价, category: equity, parent: "4002" }
+  - { code: "4002.02", name: 其他资本公积, category: equity, parent: "4002" }
+  - { code: "4003", name: 其他综合收益, category: equity, note: "财会〔2014〕7 号新增；4003 在应用指南中为空号。小企业会计准则无此科目" }
+  - { code: "4101", name: 盈余公积, category: equity, defaultChild: "4101.01" }
+  - { code: "4101.01", name: 法定盈余公积, category: equity, parent: "4101" }
+  - { code: "4101.02", name: 任意盈余公积, category: equity, parent: "4101" }
+  - { code: "4101.03", name: 储备基金, category: equity, parent: "4101" }
+  - { code: "4101.04", name: 企业发展基金, category: equity, parent: "4101" }
+  - { code: "4103", name: 本年利润, category: equity, note: "期末结转损益用；结账后转入 4104.06 未分配利润" }
+  - { code: "4104", name: 利润分配, category: equity, defaultChild: "4104.06" }
+  - { code: "4104.01", name: 提取法定盈余公积, category: equity, parent: "4104" }
+  - { code: "4104.02", name: 提取任意盈余公积, category: equity, parent: "4104" }
+  - { code: "4104.03", name: 应付现金股利或利润, category: equity, parent: "4104" }
+  - { code: "4104.04", name: 转作股本的股利, category: equity, parent: "4104" }
+  - { code: "4104.05", name: 盈余公积补亏, category: equity, parent: "4104" }
+  - { code: "4104.06", name: 未分配利润, category: equity, parent: "4104" }
+  - { code: "4201", name: 库存股, category: equity, balanceSide: debit, note: "回购本公司股份形成，所有者权益的备抵项" }
+
+  # ===========================================================================
+  # 四、成本类
+  # ===========================================================================
+  - { code: "5001", name: 生产成本, category: cost, defaultChild: "5001.01" }
+  - { code: "5001.01", name: 直接材料, category: cost, parent: "5001" }
+  - { code: "5001.02", name: 直接人工, category: cost, parent: "5001" }
+  - { code: "5001.03", name: 制造费用, category: cost, parent: "5001", note: "由 5101 制造费用分配转入" }
+  - { code: "5001.04", name: 外协加工费, category: cost, parent: "5001" }
+  - { code: "5101", name: 制造费用, category: cost, auxiliary: [department] }
+  - { code: "5201", name: 劳务成本, category: cost }
+  - { code: "5301", name: 研发支出, category: cost, defaultChild: "5301.01", note: "小企业会计准则无此科目（研发支出直接计入管理费用），5301 在小企业准则下是「营业外收入」" }
+  - { code: "5301.01", name: 费用化支出, category: cost, parent: "5301" }
+  - { code: "5301.02", name: 资本化支出, category: cost, parent: "5301" }
+  - { code: "5401", name: 工程施工, category: cost, defaultChild: "5401.01", note: "建造合同企业专用" }
+  - { code: "5401.01", name: 合同成本, category: cost, parent: "5401" }
+  - { code: "5401.02", name: 合同毛利, category: cost, parent: "5401" }
+  - { code: "5402", name: 工程结算, category: cost }
+  - { code: "5403", name: 机械作业, category: cost }
+
+  # ===========================================================================
+  # 五、损益类
+  # ===========================================================================
+  - { code: "6001", name: 主营业务收入, category: profit, defaultChild: "6001.01" }
+  - { code: "6001.01", name: 商品销售收入, category: profit, parent: "6001" }
+  - { code: "6001.02", name: 服务收入, category: profit, parent: "6001" }
+  - { code: "6001.03", name: 建造合同收入, category: profit, parent: "6001" }
+  - { code: "6051", name: 其他业务收入, category: profit, defaultChild: "6051.01" }
+  - { code: "6051.01", name: 材料销售收入, category: profit, parent: "6051" }
+  - { code: "6051.02", name: 出租收入, category: profit, parent: "6051" }
+  - { code: "6051.03", name: 其他业务收入明细, category: profit, parent: "6051" }
+  - { code: "6101", name: 公允价值变动损益, category: profit, note: "小企业会计准则无此科目" }
+  - { code: "6111", name: 投资收益, category: profit, defaultChild: "6111.01" }
+  - { code: "6111.01", name: 交易性金融资产投资收益, category: profit, parent: "6111" }
+  - { code: "6111.02", name: 长期股权投资收益, category: profit, parent: "6111" }
+  - { code: "6111.03", name: 其他投资收益, category: profit, parent: "6111" }
+  - { code: "6115", name: 资产处置损益, category: profit, note: "财会〔2017〕30 号新增（利润表单独列示「资产处置收益」）；6115 在应用指南中为空号" }
+  - { code: "6301", name: 营业外收入, category: profit, defaultChild: "6301.01" }
+  - { code: "6301.01", name: 政府补助利得, category: profit, parent: "6301" }
+  - { code: "6301.02", name: 盘盈利得, category: profit, parent: "6301" }
+  - { code: "6301.03", name: 捐赠利得, category: profit, parent: "6301" }
+  - { code: "6301.04", name: 非流动资产毁损报废利得, category: profit, parent: "6301" }
+  - { code: "6301.05", name: 其他营业外收入, category: profit, parent: "6301" }
+  - { code: "6401", name: 主营业务成本, category: profit }
+  - { code: "6402", name: 其他业务成本, category: profit, defaultChild: "6402.01" }
+  - { code: "6402.01", name: 材料销售成本, category: profit, parent: "6402" }
+  - { code: "6402.02", name: 出租成本, category: profit, parent: "6402" }
+  - { code: "6403", name: 税金及附加, category: profit, defaultChild: "6403.01", note: "财会〔2016〕22 号起「营业税金及附加」改称「税金及附加」，房产税/土地使用税/车船税/印花税也并入本户" }
+  - { code: "6403.01", name: 城市维护建设税, category: profit, parent: "6403" }
+  - { code: "6403.02", name: 教育费附加, category: profit, parent: "6403" }
+  - { code: "6403.03", name: 印花税, category: profit, parent: "6403" }
+  - { code: "6403.04", name: 房产税, category: profit, parent: "6403" }
+  - { code: "6403.05", name: 土地使用税, category: profit, parent: "6403" }
+  - { code: "6403.06", name: 车船税, category: profit, parent: "6403" }
+  - { code: "6403.07", name: 地方教育附加, category: profit, parent: "6403" }
+  - { code: "6403.08", name: 消费税, category: profit, parent: "6403" }
+  - { code: "6403.09", name: 资源税, category: profit, parent: "6403" }
+
+  # ---- 销售费用 ----
+  - { code: "6601", name: 销售费用, category: profit, auxiliary: [department] }
+  - { code: "6601.01", name: 工资, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.02", name: 社保公积金, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.03", name: 差旅费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.04", name: 业务招待费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.05", name: 办公费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.06", name: 广告宣传费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.07", name: 运输费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.08", name: 折旧费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.09", name: 租赁费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.10", name: 通讯费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.11", name: 会议费, category: profit, parent: "6601", auxiliary: [department] }
+  - { code: "6601.12", name: 其他, category: profit, parent: "6601", auxiliary: [department] }
+
+  # ---- 管理费用 ----
+  - { code: "6602", name: 管理费用, category: profit, auxiliary: [department] }
+  - { code: "6602.01", name: 工资, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.02", name: 社保公积金, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.03", name: 办公费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.04", name: 差旅费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.05", name: 水电费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.06", name: 租赁费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.07", name: 业务招待费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.08", name: 通讯费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.09", name: 折旧费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.10", name: 咨询顾问费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.11", name: 会议费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.12", name: 职工福利费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.13", name: 车辆使用费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.14", name: 修理费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.15", name: 培训费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.16", name: 税费, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.17", name: 其他, category: profit, parent: "6602", auxiliary: [department] }
+  - { code: "6602.18", name: 研发费用, category: profit, parent: "6602", auxiliary: [department], note: "费用化研发支出；资本化部分先过 5301.02" }
+  - { code: "6602.19", name: 运费及邮寄费, category: profit, parent: "6602", auxiliary: [department] }
+
+  # ---- 财务费用 ----
+  - { code: "6603", name: 财务费用, category: profit }
+  - { code: "6603.01", name: 利息支出, category: profit, parent: "6603" }
+  - { code: "6603.02", name: 手续费, category: profit, parent: "6603" }
+  - { code: "6603.03", name: 汇兑损益, category: profit, parent: "6603" }
+  - { code: "6603.04", name: 利息收入, category: profit, parent: "6603", balanceSide: credit, note: "利息收入记贷方；如习惯用红字冲减可改记 6603.01 借方负数" }
+  - { code: "6603.05", name: 现金折扣, category: profit, parent: "6603" }
+
+  # ---- 减值与营业外 ----
+  - { code: "6701", name: 资产减值损失, category: profit, defaultChild: "6701.01", note: "小企业会计准则不计提减值，无此科目" }
+  - { code: "6701.01", name: 坏账损失, category: profit, parent: "6701" }
+  - { code: "6701.02", name: 存货跌价损失, category: profit, parent: "6701" }
+  - { code: "6701.03", name: 固定资产减值损失, category: profit, parent: "6701" }
+  - { code: "6701.04", name: 无形资产减值损失, category: profit, parent: "6701" }
+  - { code: "6701.05", name: 商誉减值损失, category: profit, parent: "6701" }
+  - { code: "6701.06", name: 持有至到期投资减值损失, category: profit, parent: "6701" }
+  - { code: "6702", name: 信用减值损失, category: profit, defaultChild: "6702.02", note: "新金融工具准则下应收款项的预期信用损失计入本户；小企业会计准则无此科目" }
+  - { code: "6702.01", name: 应收票据信用减值损失, category: profit, parent: "6702" }
+  - { code: "6702.02", name: 应收账款信用减值损失, category: profit, parent: "6702" }
+  - { code: "6702.03", name: 其他应收款信用减值损失, category: profit, parent: "6702" }
+  - { code: "6711", name: 营业外支出, category: profit, defaultChild: "6711.01" }
+  - { code: "6711.01", name: 非流动资产毁损报废损失, category: profit, parent: "6711" }
+  - { code: "6711.02", name: 盘亏损失, category: profit, parent: "6711" }
+  - { code: "6711.03", name: 公益性捐赠支出, category: profit, parent: "6711" }
+  - { code: "6711.04", name: 非常损失, category: profit, parent: "6711" }
+  - { code: "6711.05", name: 罚款及滞纳金支出, category: profit, parent: "6711" }
+  - { code: "6711.06", name: 其他营业外支出, category: profit, parent: "6711" }
+  - { code: "6801", name: 所得税费用, category: profit, defaultChild: "6801.01" }
+  - { code: "6801.01", name: 当期所得税费用, category: profit, parent: "6801" }
+  - { code: "6801.02", name: 递延所得税费用, category: profit, parent: "6801", note: "小企业会计准则采用应付税款法，只有当期所得税费用" }
+  - { code: "6901", name: 以前年度损益调整, category: profit, note: "追溯调整专用；小企业会计准则采用未来适用法，无此科目" }

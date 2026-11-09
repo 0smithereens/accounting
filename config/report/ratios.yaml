@@ -1,0 +1,453 @@
+# =============================================================================
+# 财务分析指标库
+# =============================================================================
+# 三部分：
+#   metrics   基础指标（按科目取数，或由其它指标推导）。金额一律「分」。
+#   ratios    分析指标（30 个，覆盖偿债/营运/盈利/发展/现金流/质量六组）。
+#   trends    趋势观察项；structure 结构分析项。
+#
+# 表达式语法：
+#   { m: 指标键 }                       引用指标；prior.xxx 表示上期值
+#   { k: 100 }                          常量
+#   { op: add|sub|mul|div|avg|abs|neg, args: [...] }
+#     add 连加；sub 首项减其余；mul 连乘；div 两项相除（分母为 0 得空值）
+#     avg 算术平均；abs 绝对值；neg 取负
+#
+# 单位约定：unit 为 % 时，指标值已经是百分数（12.34 表示 12.34%），
+# 因此 benchmark 与 rating 阈值也按百分数填写，避免 0.1234 与 12.34 混用出错。
+# 小数位：% 默认 2 位，其它默认 4 位，可用 precision 覆盖。
+# =============================================================================
+
+metrics:
+
+  # ---------------------------- 资产 ----------------------------
+  - { key: cash, label: 货币资金, unit: 元, accounts: ["1001", "1002", "1012"], sign: debit }
+  - { key: tradingFinancialAssets, label: 交易性金融资产/短期投资, unit: 元, accounts: ["1101"], sign: debit }
+  - { key: notesReceivable, label: 应收票据, unit: 元, accounts: ["1121"], sign: debit }
+  - { key: accountsReceivable, label: 应收账款净额, unit: 元, accounts: ["1122"], sign: debit, minus: ["1231"] }
+  - { key: openingAccountsReceivable, label: 期初应收账款净额, unit: 元, accounts: ["1122"], sign: debit, minus: ["1231"], source: opening }
+  - { key: averageAccountsReceivable, label: 平均应收账款, unit: 元, expr: { op: avg, args: [{ m: accountsReceivable }, { m: openingAccountsReceivable }] } }
+  - { key: prepayments, label: 预付款项, unit: 元, accounts: ["1123"], sign: debit }
+  - { key: otherReceivables, label: 其他应收款, unit: 元, accounts: ["1221", "1131", "1132"], sign: debit }
+  - { key: inventory, label: 存货, unit: 元, accounts: ["1401", "1402", "1403", "1405", "1408", "5001", "5101", "5201"], sign: debit, minus: ["1471"] }
+  - { key: openingInventory, label: 期初存货, unit: 元, accounts: ["1401", "1402", "1403", "1405", "1408", "5001", "5101", "5201"], sign: debit, minus: ["1471"], source: opening }
+  - { key: averageInventory, label: 平均存货, unit: 元, expr: { op: avg, args: [{ m: inventory }, { m: openingInventory }] } }
+  - { key: otherCurrentAssets, label: 其他流动资产, unit: 元, accounts: ["1901"], sign: debit }
+  - key: currentAssets
+    label: 流动资产合计
+    unit: 元
+    expr:
+      op: add
+      args:
+        - { m: cash }
+        - { m: tradingFinancialAssets }
+        - { m: notesReceivable }
+        - { m: accountsReceivable }
+        - { m: prepayments }
+        - { m: otherReceivables }
+        - { m: inventory }
+        - { m: otherCurrentAssets }
+  - { key: fixedAssets, label: 固定资产净额, unit: 元, accounts: ["1601"], sign: debit, minus: ["1602", "1603"] }
+  - { key: openingFixedAssets, label: 期初固定资产净额, unit: 元, accounts: ["1601"], sign: debit, minus: ["1602", "1603"], source: opening }
+  - { key: averageFixedAssets, label: 平均固定资产净额, unit: 元, expr: { op: avg, args: [{ m: fixedAssets }, { m: openingFixedAssets }] } }
+  - key: totalAssets
+    label: 资产总计
+    unit: 元
+    sign: debit
+    accounts: ["1001", "1002", "1012", "1101", "1121", "1122", "1123", "1124", "1125", "1131", "1132", "1221", "1401", "1402", "1403", "1405", "1408", "1501", "1502", "1503", "1504", "1511", "1521", "1531", "1601", "1604", "1605", "1606", "1611", "1621", "1631", "1701", "1711", "1801", "1811", "1901", "1902", "5001", "5101", "5201"]
+    minus: ["1231", "1471", "1512", "1602", "1603", "1702", "1703"]
+  - key: openingTotalAssets
+    label: 期初资产总计
+    unit: 元
+    sign: debit
+    source: opening
+    accounts: ["1001", "1002", "1012", "1101", "1121", "1122", "1123", "1124", "1125", "1131", "1132", "1221", "1401", "1402", "1403", "1405", "1408", "1501", "1502", "1503", "1504", "1511", "1521", "1531", "1601", "1604", "1605", "1606", "1611", "1621", "1631", "1701", "1711", "1801", "1811", "1901", "1902", "5001", "5101", "5201"]
+    minus: ["1231", "1471", "1512", "1602", "1603", "1702", "1703"]
+  - { key: averageTotalAssets, label: 平均资产总额, unit: 元, expr: { op: avg, args: [{ m: totalAssets }, { m: openingTotalAssets }] } }
+  - { key: nonCurrentAssets, label: 非流动资产, unit: 元, expr: { op: sub, args: [{ m: totalAssets }, { m: currentAssets }] } }
+
+  # ---------------------------- 负债与权益 ----------------------------
+  - { key: shortTermLoans, label: 短期借款, unit: 元, accounts: ["2001"], sign: credit }
+  - { key: notesPayable, label: 应付票据, unit: 元, accounts: ["2201"], sign: credit }
+  - { key: accountsPayable, label: 应付账款, unit: 元, accounts: ["2202"], sign: credit }
+  - { key: openingAccountsPayable, label: 期初应付账款, unit: 元, accounts: ["2202"], sign: credit, source: opening }
+  - { key: averageAccountsPayable, label: 平均应付账款, unit: 元, expr: { op: avg, args: [{ m: accountsPayable }, { m: openingAccountsPayable }] } }
+  - { key: advances, label: 预收款项, unit: 元, accounts: ["2203"], sign: credit }
+  - { key: payrollPayable, label: 应付职工薪酬, unit: 元, accounts: ["2211"], sign: credit }
+  - { key: taxesPayable, label: 应交税费, unit: 元, accounts: ["2221"], sign: credit }
+  - { key: otherPayables, label: 其他应付款, unit: 元, accounts: ["2241", "2231", "2232"], sign: credit }
+  - key: currentLiabilities
+    label: 流动负债合计
+    unit: 元
+    expr:
+      op: add
+      args:
+        - { m: shortTermLoans }
+        - { m: notesPayable }
+        - { m: accountsPayable }
+        - { m: advances }
+        - { m: payrollPayable }
+        - { m: taxesPayable }
+        - { m: otherPayables }
+  - key: totalLiabilities
+    label: 负债合计
+    unit: 元
+    sign: credit
+    accounts: ["2001", "2101", "2102", "2201", "2202", "2203", "2204", "2211", "2221", "2231", "2232", "2241", "2245", "2246", "2401", "2501", "2502", "2701", "2702", "2801", "2901", "2902"]
+  - { key: nonCurrentLiabilities, label: 非流动负债, unit: 元, expr: { op: sub, args: [{ m: totalLiabilities }, { m: currentLiabilities }] } }
+  - { key: totalEquity, label: 所有者权益合计, unit: 元, accounts: ["4001", "4002", "4101", "4103", "4104"], sign: credit }
+  - { key: openingTotalEquity, label: 期初所有者权益, unit: 元, accounts: ["4001", "4002", "4101", "4103", "4104"], sign: credit, source: opening }
+  - { key: averageTotalEquity, label: 平均所有者权益, unit: 元, expr: { op: avg, args: [{ m: totalEquity }, { m: openingTotalEquity }] } }
+
+  # ---------------------------- 损益 ----------------------------
+  - { key: revenue, label: 营业收入, unit: 元, accounts: ["6001", "6051"], sign: credit, source: net }
+  - { key: mainRevenue, label: 主营业务收入, unit: 元, accounts: ["6001"], sign: credit, source: net }
+  - { key: costOfSales, label: 营业成本, unit: 元, accounts: ["6401", "6402"], sign: debit, source: net }
+  - { key: taxesSurcharge, label: 税金及附加, unit: 元, accounts: ["6403"], sign: debit, source: net }
+  - { key: sellingExpense, label: 销售费用, unit: 元, accounts: ["6601"], sign: debit, source: net }
+  - { key: adminExpense, label: 管理费用, unit: 元, accounts: ["6602"], sign: debit, source: net }
+  - { key: rdExpense, label: 研发费用, unit: 元, accounts: ["6602.18", "5301.01"], sign: debit, source: net }
+  - { key: financeExpense, label: 财务费用, unit: 元, accounts: ["6603"], sign: debit, source: net }
+  - { key: interestExpense, label: 利息支出, unit: 元, accounts: ["6603.01"], sign: debit, source: net }
+  - { key: investmentIncome, label: 投资收益, unit: 元, accounts: ["6111"], sign: credit, source: net }
+  - { key: nonOperatingIncome, label: 营业外收入, unit: 元, accounts: ["6301"], sign: credit, source: net }
+  - { key: nonOperatingExpense, label: 营业外支出, unit: 元, accounts: ["6711"], sign: debit, source: net }
+  - { key: incomeTax, label: 所得税费用, unit: 元, accounts: ["6801"], sign: debit, source: net }
+  - { key: creditImpairment, label: 信用减值损失, unit: 元, accounts: ["6702"], sign: debit, source: net }
+  - { key: assetImpairment, label: 资产减值损失, unit: 元, accounts: ["6701"], sign: debit, source: net }
+  - key: operatingProfit
+    label: 营业利润
+    unit: 元
+    expr:
+      op: add
+      args:
+        - { op: sub, args: [{ m: revenue }, { m: costOfSales }, { m: taxesSurcharge }, { m: sellingExpense }, { m: adminExpense }, { m: financeExpense }] }
+        - { m: investmentIncome }
+        - { op: neg, args: [{ m: creditImpairment }] }
+        - { op: neg, args: [{ m: assetImpairment }] }
+  - { key: profitBeforeTax, label: 利润总额, unit: 元, expr: { op: add, args: [{ m: operatingProfit }, { m: nonOperatingIncome }, { op: neg, args: [{ m: nonOperatingExpense }] }] } }
+  - { key: netProfit, label: 净利润, unit: 元, expr: { op: sub, args: [{ m: profitBeforeTax }, { m: incomeTax }] } }
+  - { key: totalCostExpense, label: 成本费用总额, unit: 元, expr: { op: add, args: [{ m: costOfSales }, { m: taxesSurcharge }, { m: sellingExpense }, { m: adminExpense }, { m: financeExpense }] } }
+  - { key: periodExpense, label: 期间费用, unit: 元, expr: { op: add, args: [{ m: sellingExpense }, { m: adminExpense }, { m: financeExpense }] } }
+  - { key: ebit, label: 息税前利润, unit: 元, expr: { op: add, args: [{ m: profitBeforeTax }, { m: interestExpense }] } }
+  - { key: nonRecurring, label: 非经常性损益, unit: 元, expr: { op: abs, args: [{ op: sub, args: [{ m: nonOperatingIncome }, { m: nonOperatingExpense }] }] } }
+
+  # ---------------------------- 现金流 ----------------------------
+  - { key: operatingCashFlow, label: 经营活动现金流量净额, unit: 元, source: cashflow }
+
+ratios:
+
+  # ---------------------------- 偿债能力 ----------------------------
+  - code: SOL-01
+    name: 流动比率
+    group: solvency
+    unit: 倍
+    formula: 流动资产 ÷ 流动负债
+    expr: { op: div, args: [{ m: currentAssets }, { m: currentLiabilities }] }
+    benchmark: [1.5, 2.0]
+    rating: { direction: higher_better, good: 1.5, watch: 1.0 }
+    hint: 衡量短期偿债能力；一般认为 2 左右较稳健，过高说明资金利用效率偏低
+  - code: SOL-02
+    name: 速动比率
+    group: solvency
+    unit: 倍
+    formula: （流动资产 − 存货）÷ 流动负债
+    expr: { op: div, args: [{ op: sub, args: [{ m: currentAssets }, { m: inventory }] }, { m: currentLiabilities }] }
+    benchmark: [1.0, 1.5]
+    rating: { direction: higher_better, good: 1.0, watch: 0.7 }
+    hint: 剔除变现最慢的存货后的短期偿债能力
+  - code: SOL-03
+    name: 现金比率
+    group: solvency
+    unit: 倍
+    formula: 货币资金 ÷ 流动负债
+    expr: { op: div, args: [{ m: cash }, { m: currentLiabilities }] }
+    benchmark: [0.2, 0.5]
+    rating: { direction: higher_better, good: 0.2, watch: 0.1 }
+    hint: 最保守的偿债口径，只考虑随时可动用的现金
+  - code: SOL-04
+    name: 资产负债率
+    group: solvency
+    unit: "%"
+    formula: 负债总额 ÷ 资产总额 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: totalLiabilities }, { m: totalAssets }] }, { k: 100 }] }
+    benchmark: [40, 60]
+    rating: { direction: lower_better, good: 50, watch: 70 }
+    hint: 反映整体财务杠杆；超过 70% 通常被视为高负债经营
+  - code: SOL-05
+    name: 产权比率
+    group: solvency
+    unit: 倍
+    formula: 负债总额 ÷ 所有者权益
+    expr: { op: div, args: [{ m: totalLiabilities }, { m: totalEquity }] }
+    benchmark: [0.5, 1.5]
+    rating: { direction: lower_better, good: 1.0, watch: 1.5 }
+    hint: 债权人与股东投入资金的相对关系
+  - code: SOL-06
+    name: 利息保障倍数
+    group: solvency
+    unit: 倍
+    formula: （利润总额 + 利息支出）÷ 利息支出
+    expr: { op: div, args: [{ m: ebit }, { m: interestExpense }] }
+    benchmark: [3, 8]
+    rating: { direction: higher_better, good: 3, watch: 1.5 }
+    hint: 低于 1 说明经营利润不足以覆盖利息，存在违约风险
+
+  # ---------------------------- 营运能力 ----------------------------
+  - code: OPE-01
+    name: 应收账款周转率
+    group: operation
+    unit: 次
+    formula: 营业收入 ÷ 平均应收账款
+    expr: { op: div, args: [{ m: revenue }, { m: averageAccountsReceivable }] }
+    benchmark: [4, 8]
+    rating: { direction: higher_better, good: 6, watch: 3 }
+    hint: 反映赊销回款速度，下降往往先于坏账暴露
+  - code: OPE-02
+    name: 应收账款周转天数
+    group: operation
+    unit: 天
+    formula: 360 × 平均应收账款 ÷ 营业收入
+    expr: { op: div, args: [{ op: mul, args: [{ k: 360 }, { m: averageAccountsReceivable }] }, { m: revenue }] }
+    benchmark: [45, 90]
+    rating: { direction: lower_better, good: 60, watch: 120 }
+    hint: 天数越长，资金被客户占用的时间越久
+  - code: OPE-03
+    name: 存货周转率
+    group: operation
+    unit: 次
+    formula: 营业成本 ÷ 平均存货
+    expr: { op: div, args: [{ m: costOfSales }, { m: averageInventory }] }
+    benchmark: [3, 6]
+    rating: { direction: higher_better, good: 4, watch: 2 }
+    hint: 反映存货变现速度；骤降可能是滞销或备货过度
+  - code: OPE-04
+    name: 存货周转天数
+    group: operation
+    unit: 天
+    formula: 360 × 平均存货 ÷ 营业成本
+    expr: { op: div, args: [{ op: mul, args: [{ k: 360 }, { m: averageInventory }] }, { m: costOfSales }] }
+    benchmark: [60, 120]
+    rating: { direction: lower_better, good: 90, watch: 180 }
+    hint: 天数上升意味着存货占用资金增加
+  - code: OPE-05
+    name: 应付账款周转率
+    group: operation
+    unit: 次
+    formula: 营业成本 ÷ 平均应付账款
+    expr: { op: div, args: [{ m: costOfSales }, { m: averageAccountsPayable }] }
+    benchmark: [4, 8]
+    rating: { direction: lower_better, good: 4, watch: 8 }
+    hint: 周转率过低说明占用供应商资金较多，需关注付款信用
+  - code: OPE-06
+    name: 总资产周转率
+    group: operation
+    unit: 次
+    formula: 营业收入 ÷ 平均资产总额
+    expr: { op: div, args: [{ m: revenue }, { m: averageTotalAssets }] }
+    benchmark: [0.6, 1.2]
+    rating: { direction: higher_better, good: 0.8, watch: 0.4 }
+    hint: 衡量全部资产的经营效率，重资产行业天然偏低
+  - code: OPE-07
+    name: 固定资产周转率
+    group: operation
+    unit: 次
+    formula: 营业收入 ÷ 平均固定资产净额
+    expr: { op: div, args: [{ m: revenue }, { m: averageFixedAssets }] }
+    benchmark: [1.5, 4.0]
+    rating: { direction: higher_better, good: 2, watch: 1 }
+    hint: 反映厂房设备的使用效率
+
+  # ---------------------------- 盈利能力 ----------------------------
+  - code: PRO-01
+    name: 毛利率
+    group: profitability
+    unit: "%"
+    formula: （营业收入 − 营业成本）÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ op: sub, args: [{ m: revenue }, { m: costOfSales }] }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [15, 35]
+    rating: { direction: higher_better, good: 25, watch: 15 }
+    hint: 毛利率下滑是竞争力减弱或成本失控的最早信号
+  - code: PRO-02
+    name: 营业利润率
+    group: profitability
+    unit: "%"
+    formula: 营业利润 ÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: operatingProfit }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [5, 15]
+    rating: { direction: higher_better, good: 10, watch: 5 }
+    hint: 剔除营业外因素后的主营盈利能力
+  - code: PRO-03
+    name: 净利率
+    group: profitability
+    unit: "%"
+    formula: 净利润 ÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: netProfit }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [3, 10]
+    rating: { direction: higher_better, good: 8, watch: 3 }
+    hint: 每 100 元收入最终留下的利润
+  - code: PRO-04
+    name: 总资产报酬率
+    group: profitability
+    unit: "%"
+    formula: 净利润 ÷ 平均资产总额 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: netProfit }, { m: averageTotalAssets }] }, { k: 100 }] }
+    benchmark: [3, 8]
+    rating: { direction: higher_better, good: 8, watch: 3 }
+    hint: 全部资产的综合盈利能力（ROA）
+  - code: PRO-05
+    name: 净资产收益率
+    group: profitability
+    unit: "%"
+    formula: 净利润 ÷ 平均所有者权益 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: netProfit }, { m: averageTotalEquity }] }, { k: 100 }] }
+    benchmark: [8, 15]
+    rating: { direction: higher_better, good: 12, watch: 6 }
+    hint: 股东投入资本的回报水平（ROE）
+  - code: PRO-06
+    name: 成本费用利润率
+    group: profitability
+    unit: "%"
+    formula: 利润总额 ÷ 成本费用总额 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: profitBeforeTax }, { m: totalCostExpense }] }, { k: 100 }] }
+    benchmark: [5, 12]
+    rating: { direction: higher_better, good: 10, watch: 5 }
+    hint: 每投入 100 元成本费用能带来多少利润
+
+  # ---------------------------- 发展能力 ----------------------------
+  - code: GRO-01
+    name: 营业收入增长率
+    group: growth
+    unit: "%"
+    formula: （本期营业收入 − 上期营业收入）÷ 上期营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ op: sub, args: [{ m: revenue }, { m: prior.revenue }] }, { m: prior.revenue }] }, { k: 100 }] }
+    benchmark: [5, 20]
+    rating: { direction: higher_better, good: 10, watch: 0 }
+    hint: 低于 0 说明收入萎缩，需结合行业景气度判断
+  - code: GRO-02
+    name: 净利润增长率
+    group: growth
+    unit: "%"
+    formula: （本期净利润 − 上期净利润）÷ |上期净利润| × 100
+    expr: { op: mul, args: [{ op: div, args: [{ op: sub, args: [{ m: netProfit }, { m: prior.netProfit }] }, { op: abs, args: [{ m: prior.netProfit }] }] }, { k: 100 }] }
+    benchmark: [5, 20]
+    rating: { direction: higher_better, good: 10, watch: 0 }
+    hint: 上期为负时按绝对值作分母，正负号含义需结合实际情况解读
+  - code: GRO-03
+    name: 总资产增长率
+    group: growth
+    unit: "%"
+    formula: （期末资产总额 − 上期资产总额）÷ 上期资产总额 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ op: sub, args: [{ m: totalAssets }, { m: prior.totalAssets }] }, { m: prior.totalAssets }] }, { k: 100 }] }
+    benchmark: [3, 15]
+    rating: { direction: higher_better, good: 5, watch: 0 }
+    hint: 扩张速度应与收入增长匹配，否则可能是低效扩张
+  - code: GRO-04
+    name: 净资产增长率
+    group: growth
+    unit: "%"
+    formula: （期末所有者权益 − 上期所有者权益）÷ 上期所有者权益 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ op: sub, args: [{ m: totalEquity }, { m: prior.totalEquity }] }, { m: prior.totalEquity }] }, { k: 100 }] }
+    benchmark: [5, 15]
+    rating: { direction: higher_better, good: 5, watch: 0 }
+    hint: 反映资本积累速度，长期应高于通胀水平
+
+  # ---------------------------- 现金流量 ----------------------------
+  - code: CAS-01
+    name: 经营现金流对净利润比
+    group: cashflow
+    unit: 倍
+    formula: 经营活动现金流量净额 ÷ 净利润
+    expr: { op: div, args: [{ m: operatingCashFlow }, { m: netProfit }] }
+    benchmark: [0.8, 1.5]
+    rating: { direction: higher_better, good: 1.0, watch: 0.5 }
+    hint: 长期低于 1 说明利润没有转化为现金，存在「纸面利润」风险
+  - code: CAS-02
+    name: 现金流量比率
+    group: cashflow
+    unit: 倍
+    formula: 经营活动现金流量净额 ÷ 流动负债
+    expr: { op: div, args: [{ m: operatingCashFlow }, { m: currentLiabilities }] }
+    benchmark: [0.2, 0.5]
+    rating: { direction: higher_better, good: 0.3, watch: 0.1 }
+    hint: 用经营现金偿还短期债务的能力
+  - code: CAS-03
+    name: 现金再投资比率
+    group: cashflow
+    unit: "%"
+    formula: 经营活动现金流量净额 ÷ 非流动资产 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: operatingCashFlow }, { m: nonCurrentAssets }] }, { k: 100 }] }
+    benchmark: [5, 15]
+    rating: { direction: higher_better, good: 10, watch: 5 }
+    hint: 经营现金中可用于再投资长期资产的比例
+
+  # ---------------------------- 盈余质量 ----------------------------
+  - code: QUA-01
+    name: 主营业务收入占比
+    group: quality
+    unit: "%"
+    formula: 主营业务收入 ÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: mainRevenue }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [80, 100]
+    rating: { direction: higher_better, good: 80, watch: 60 }
+    hint: 占比过低说明收入依赖非主营业务，可持续性存疑
+  - code: QUA-02
+    name: 期间费用率
+    group: quality
+    unit: "%"
+    formula: （销售费用 + 管理费用 + 财务费用）÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: periodExpense }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [10, 25]
+    rating: { direction: lower_better, good: 15, watch: 25 }
+    hint: 费用率的上升速度超过收入增速时，利润会被侵蚀
+  - code: QUA-03
+    name: 非经常性损益占比
+    group: quality
+    unit: "%"
+    formula: "|营业外收入 − 营业外支出| ÷ |净利润| × 100"
+    expr: { op: mul, args: [{ op: div, args: [{ m: nonRecurring }, { op: abs, args: [{ m: netProfit }] }] }, { k: 100 }] }
+    benchmark: [0, 10]
+    rating: { direction: lower_better, good: 5, watch: 15 }
+    hint: 占比过高说明利润依赖偶发事项，不具备持续性
+  - code: QUA-04
+    name: 应收账款占收入比
+    group: quality
+    unit: "%"
+    formula: 应收账款净额 ÷ 营业收入 × 100
+    expr: { op: mul, args: [{ op: div, args: [{ m: accountsReceivable }, { m: revenue }] }, { k: 100 }] }
+    benchmark: [10, 30]
+    rating: { direction: lower_better, good: 20, watch: 40 }
+    hint: 该比例快速上升往往意味着放宽信用政策换收入
+
+# ---------------------------------------------------------------------------
+# 趋势观察项
+# ---------------------------------------------------------------------------
+trends:
+  - { key: revenue, label: 营业收入, direction: higher_better, unit: 元 }
+  - { key: netProfit, label: 净利润, direction: higher_better, unit: 元 }
+  - { key: totalAssets, label: 资产总计, direction: higher_better, unit: 元 }
+  - { key: equity, label: 所有者权益合计, direction: higher_better, unit: 元 }
+  - { key: operatingCashFlow, label: 经营活动现金流量净额, direction: higher_better, unit: 元 }
+  - { key: SOL-01, label: 流动比率, direction: higher_better, unit: 倍 }
+  - { key: SOL-04, label: 资产负债率, direction: lower_better, unit: "%" }
+  - { key: PRO-01, label: 毛利率, direction: higher_better, unit: "%" }
+  - { key: PRO-05, label: 净资产收益率, direction: higher_better, unit: "%" }
+
+# ---------------------------------------------------------------------------
+# 结构分析项（收入 / 成本 / 费用 Top N）
+# 说明：收入结构按明细科目列示，未列示的差额自动归入「其他」。
+# ---------------------------------------------------------------------------
+structure:
+  revenue:
+    - { label: 主营业务收入-商品销售, accounts: ["6001.01"], sign: credit, source: net }
+    - { label: 主营业务收入-服务收入, accounts: ["6001.02"], sign: credit, source: net }
+    - { label: 其他业务收入, accounts: ["6051"], sign: credit, source: net }
+  cost:
+    - { label: 主营业务成本, accounts: ["6401"], sign: debit, source: net }
+    - { label: 其他业务成本, accounts: ["6402"], sign: debit, source: net }
+  expense:
+    - { label: 销售费用, accounts: ["6601"], sign: debit, source: net }
+    - { label: 管理费用, accounts: ["6602"], sign: debit, source: net, exclude: ["6602.18"] }
+    - { label: 研发费用, accounts: ["6602.18", "5301.01"], sign: debit, source: net }
+    - { label: 财务费用, accounts: ["6603"], sign: debit, source: net }
+    - { label: 税金及附加, accounts: ["6403"], sign: debit, source: net }

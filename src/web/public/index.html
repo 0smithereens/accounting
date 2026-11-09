@@ -3,147 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>会计自动化记账系统</title>
-<link rel="stylesheet" href="/style.css">
+<meta name="color-scheme" content="light">
+<title>账有律 · 会计合规工作台</title>
+<link rel="stylesheet" href="/style.css?v=20261105">
 </head>
 <body>
+<a class="skip-link" href="#main" data-action="skip-main">跳到主要内容</a>
 
-<header class="topbar">
-  <div class="brand">
-    <span class="logo">账</span>
-    <div>
-      <h1>会计自动化记账</h1>
-      <p id="configLine">正在读取配置…</p>
+<div class="app">
+  <aside class="sidebar" aria-label="侧边栏">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">账</span>
+      <span class="brand-text"><strong>账有律</strong><small>会计合规工作台</small></span>
     </div>
+
+    <div class="side-caption">业务工作区</div>
+    <nav class="side-nav" aria-label="主导航">
+      <a class="nav-link" href="#/workbench" data-nav="workbench">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>工作台</span>
+      </a>
+      <a class="nav-link" href="#/bookkeeping" data-nav="bookkeeping">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+        <span>记账</span>
+      </a>
+      <a class="nav-link" href="#/review" data-nav="review">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>审核</span>
+      </a>
+      <a class="nav-link" href="#/statements" data-nav="statements">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><rect x="6" y="10" width="3" height="7" rx=".8"/><rect x="11" y="6" width="3" height="11" rx=".8"/><rect x="16" y="13" width="3" height="4" rx=".8"/></svg>
+        <span>报表</span>
+      </a>
+      <a class="nav-link" href="#/tax" data-nav="tax">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+        <span>报税</span>
+      </a>
+      <a class="nav-link" href="#/policy" data-nav="policy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h12"/></svg>
+        <span>政策库</span>
+      </a>
+      <a class="nav-link" href="#/audit" data-nav="audit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg>
+        <span>审计</span>
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="side-foot-row"><span class="dot dot-ok" aria-hidden="true"></span><span>本机离线运行</span></div>
+      <p id="sideConfig">科目 297 · 规则 86</p>
+      <p class="side-foot-note">单据与账务数据不离开本机</p>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-heading">
+        <div class="topbar-product"><span class="product-mark" aria-hidden="true"></span>账有律<span class="topbar-sep">/</span><h1 id="pageTitle">工作台</h1></div>
+        <p id="pageSubtitle">上传单据，完成月结、审核、报表与申报草稿</p>
+      </div>
+      <div class="topbar-meta">
+        <span class="meta-chip" title="当前会计期间"><span class="meta-label">会计期间</span><strong id="periodChip">—</strong></span>
+        <span class="badge badge-primary" id="standardChip">—</span>
+        <span class="meta-chip company-chip" id="companyChip" title="企业名称">—</span>
+        <button class="icon-btn" type="button" data-action="refresh-page" id="refreshPageBtn" title="刷新当前页数据" aria-label="刷新当前页数据">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6"/><path d="M20 4v7h-7"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="errorBar" class="error-bar" role="alert" hidden>
+      <span class="error-bar-icon" aria-hidden="true">!</span>
+      <span id="errorBarText"></span>
+      <button type="button" class="error-bar-close" data-action="dismiss-error" aria-label="关闭错误提示">×</button>
+    </div>
+
+    <main id="main" class="content">
+
+      <!-- ================= 工作台 ================= -->
+      <section class="page" id="page-workbench" data-page="workbench">
+        <div class="card upload-card" id="wbUploadCard">
+          <div class="card-head">
+            <div>
+              <h2>开始月结</h2>
+              <p class="card-sub">上传银行流水、发票台账、报销单、工资表等单据，系统自动生成凭证、四张报表与申报草稿。</p>
+            </div>
+            <span class="badge badge-soft">第 1 步 / 上传</span>
+          </div>
+
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="点击或拖拽上传单据文件">
+            <input id="fileInput" type="file" multiple hidden accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt,.docx,.docm">
+            <div class="drop-icon" aria-hidden="true">↑</div>
+            <div class="drop-title">把单据拖到这里，或 <span class="link-text">点击选择文件</span></div>
+            <div class="drop-sub">支持 .xlsx / .csv / .docx 等格式，可一次多选；文件仅在本机处理，不会离开这台电脑</div>
+          </div>
+
+          <ul id="fileList" class="file-list" aria-label="已选择的文件"></ul>
+
+          <div class="form-grid">
+            <label class="field" for="periodInput">
+              <span>会计期间</span>
+              <input id="periodInput" type="month" autocomplete="off">
+            </label>
+            <label class="field" for="standardSelect">
+              <span>会计准则</span>
+              <select id="standardSelect">
+                <option value="cas">企业会计准则</option>
+                <option value="small">小企业会计准则</option>
+              </select>
+            </label>
+            <div class="field field-static">
+              <span>本企业</span>
+              <strong id="uploadCompany">—</strong>
+            </div>
+          </div>
+
+          <div class="upload-actions">
+            <button id="startBtn" class="btn btn-primary" type="button" data-action="start-close" disabled>开始月结</button>
+            <button id="clearBtn" class="btn btn-ghost" type="button" data-action="clear-files" disabled>清空</button>
+            <span id="uploadHint" class="hint">请先选择至少一个单据文件</span>
+          </div>
+
+          <div id="closeProgress" class="close-progress" hidden>
+            <div class="spinner" aria-hidden="true"></div>
+            <div class="progress-main">
+              <div class="progress-line"><strong id="closeProgressText" aria-live="polite">正在处理…</strong><span id="closeElapsed" class="progress-elapsed">0 秒</span></div>
+              <div id="closeSteps" class="progress-steps"></div>
+            </div>
+          </div>
+
+          <div id="closeError" class="inline-error" hidden></div>
+        </div>
+
+        <div id="wbResult"></div>
+        <div id="wbMeta"></div>
+      </section>
+
+      <!-- ================= 记账 ================= -->
+      <section class="page" id="page-bookkeeping" data-page="bookkeeping" hidden>
+        <div id="bkRoot"></div>
+      </section>
+
+      <!-- ================= 审核 ================= -->
+      <section class="page" id="page-review" data-page="review" hidden>
+        <div id="reviewRoot"></div>
+      </section>
+
+      <!-- ================= 报表 ================= -->
+      <section class="page" id="page-statements" data-page="statements" hidden>
+        <div id="statementsRoot"></div>
+      </section>
+
+      <!-- ================= 报税 ================= -->
+      <section class="page" id="page-tax" data-page="tax" hidden>
+        <div id="taxRoot"></div>
+      </section>
+
+      <!-- ================= 政策库 ================= -->
+      <section class="page" id="page-policy" data-page="policy" hidden>
+        <div id="policyRoot"></div>
+      </section>
+
+      <!-- ================= 审计 ================= -->
+      <section class="page" id="page-audit" data-page="audit" hidden>
+        <div id="auditRoot"></div>
+      </section>
+
+    </main>
+
+    <footer class="app-footer">
+      <span>账有律 · 会计合规工作台</span>
+      <span class="footer-sep">·</span>
+      <span>所有凭证与申报表均为草稿，须经人工复核；系统不向税务机关提交任何数据</span>
+      <span class="footer-sep">·</span>
+      <span>服务仅监听 127.0.0.1</span>
+    </footer>
   </div>
-  <div id="configWarn" class="warn-badge hidden"></div>
-</header>
+</div>
 
-<main>
-  <!-- ================= 上传区 ================= -->
-  <section class="card">
-    <h2>1. 上传单据</h2>
-    <p class="hint">
-      支持银行流水/对账单、发票台账、报销单/费用明细、工资表（<code>.xlsx</code> / <code>.csv</code>），
-      以及采购/销售合同（<code>.docx</code>）。文件只在本机处理，不会上传到任何服务器。
-    </p>
-
-    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="选择或拖入文件">
-      <div class="dropzone-inner">
-        <div class="dz-icon">＋</div>
-        <div class="dz-text">把 Excel / Word 文件拖到这里，或点击选择</div>
-        <div class="dz-sub">可一次选择多个文件，系统会自动识别每个文件的单据类型</div>
-      </div>
-      <input id="fileInput" type="file" multiple accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt,.docx,.docm" hidden>
+<div id="drawerOverlay" class="drawer-overlay" hidden></div>
+<aside id="policyDrawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+  <div class="drawer-head">
+    <div>
+      <p class="drawer-eyebrow">政策详情</p>
+      <h2 id="drawerTitle">政策文件</h2>
     </div>
+    <button type="button" class="icon-btn drawer-close" data-action="close-drawer" aria-label="关闭政策详情">×</button>
+  </div>
+  <div id="drawerBody" class="drawer-body"></div>
+</aside>
 
-    <ul id="fileList" class="file-list"></ul>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-    <div class="options">
-      <label>
-        <span>会计期间</span>
-        <input id="period" type="month" title="用于日期缺失的单据，如工资表">
-      </label>
-      <label>
-        <span>单据类型</span>
-        <select id="kind">
-          <option value="auto">自动识别（推荐）</option>
-          <option value="bank">银行流水 / 对账单</option>
-          <option value="invoice">发票台账</option>
-          <option value="expense">报销单 / 费用明细</option>
-          <option value="payroll">工资表 / 社保公积金</option>
-          <option value="contract">Word 合同</option>
-        </select>
-      </label>
-      <label class="checkbox">
-        <input id="dedup" type="checkbox" checked>
-        <span>跨单据去重<em>（防止银行流水与工资表重复记账）</em></span>
-      </label>
-      <label class="checkbox">
-        <input id="autoBalance" type="checkbox" checked>
-        <span>自动配平<em>（借贷不平时差额挂待处理科目）</em></span>
-      </label>
-    </div>
-
-    <div class="actions">
-      <button id="runBtn" class="primary" disabled>开始记账</button>
-      <button id="clearBtn" class="ghost" disabled>清空</button>
-    </div>
-    <div id="progress" class="progress hidden"><div class="spinner"></div><span>正在识别与生成凭证…</span></div>
-    <div id="errorBox" class="error-box hidden"></div>
-  </section>
-
-  <!-- ================= 结果区 ================= -->
-  <section id="resultSection" class="hidden">
-    <div class="card">
-      <h2>2. 处理结果</h2>
-      <div id="statsGrid" class="stats-grid"></div>
-      <div class="actions">
-        <button id="downloadBtn" class="primary">下载记账凭证 Excel</button>
-        <span class="hint inline">包含 记账凭证 / 科目汇总表 / 单据台账 / 问题与待办 / 导入模板 / 处理说明</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="tabs" role="tablist">
-        <button class="tab active" data-tab="vouchers" role="tab">记账凭证</button>
-        <button class="tab" data-tab="documents" role="tab">单据台账</button>
-        <button class="tab" data-tab="trial" role="tab">科目汇总表</button>
-        <button class="tab" data-tab="issues" role="tab">问题与待办 <span id="issueCount" class="pill"></span></button>
-      </div>
-
-      <div id="tab-vouchers" class="tab-panel active">
-        <div class="table-tools">
-          <input id="voucherFilter" type="search" placeholder="按摘要、科目、凭证号筛选…">
-          <label class="checkbox small"><input id="onlyIssue" type="checkbox"><span>只看有警示的凭证</span></label>
-        </div>
-        <div class="table-wrap"><table id="voucherTable"></table></div>
-      </div>
-
-      <div id="tab-documents" class="tab-panel">
-        <div class="table-tools">
-          <input id="docFilter" type="search" placeholder="按摘要、往来单位、文件筛选…">
-        </div>
-        <div class="table-wrap"><table id="docTable"></table></div>
-      </div>
-
-      <div id="tab-trial" class="tab-panel">
-        <div class="table-wrap"><table id="trialTable"></table></div>
-      </div>
-
-      <div id="tab-issues" class="tab-panel">
-        <div class="table-tools">
-          <label class="checkbox small">
-            <input id="issueLevelError" type="checkbox" checked><span>错误</span>
-          </label>
-          <label class="checkbox small">
-            <input id="issueLevelWarning" type="checkbox" checked><span>警告</span>
-          </label>
-          <label class="checkbox small">
-            <input id="issueLevelInfo" type="checkbox"><span>提示</span>
-          </label>
-        </div>
-        <div class="table-wrap"><table id="issueTable"></table></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="card muted">
-    <h2>使用提示</h2>
-    <ul class="tips">
-      <li><strong>先看「问题与待办」。</strong>错误级别的问题必须处理，否则凭证可能不符合你的实际业务。</li>
-      <li><strong>同一笔业务不要重复导入。</strong>系统会自动识别银行代发工资与工资表的重复，但其它重复需你自行判断。</li>
-      <li><strong>科目与规则都可配置。</strong>修改 <code>config/mappings/*.yaml</code> 后刷新本页重新生成即可，不用改代码。</li>
-      <li><strong>生成的凭证是草稿。</strong>请务必人工复核后再导入财务软件，尤其是走「待处理财产损溢」的分录。</li>
-      <li><strong>期初余额不在本工具范围内。</strong>银行对账单的期初余额需在金蝶/用友中录入，否则银行存款科目余额会偏移。</li>
-    </ul>
-  </section>
-</main>
-
-<footer>
-  <span>数据全程在本机处理 · 服务仅监听 127.0.0.1</span>
-</footer>
-
-<script src="/app.js"></script>
+<script src="/app.js?v=20261105"></script>
 </body>
 </html>
