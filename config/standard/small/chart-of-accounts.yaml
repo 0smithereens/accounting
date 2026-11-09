@@ -1,0 +1,122 @@
+# =============================================================================
+# 会计科目表 —— 小企业会计准则（财会〔2011〕17 号）
+# =============================================================================
+# 制定依据：
+#   《小企业会计准则》（财政部 2011-11-18 发布，财会〔2011〕17 号，2013-01-01 起施行）
+#   附件《小企业会计准则——会计科目、主要账务处理和财务报表》之「一、会计科目」。
+#
+# 本表严格照录准则附件的 66 个一级科目，未增删、未改名（顺序号与准则附件一致）：
+#   资产类 32 个（顺序号 1-32）、负债类 12 个（33-44）、所有者权益类 5 个（45-49）、
+#   成本类 5 个（50-54）、损益类 12 个（55-66）。
+#   准则允许小企业在不违反确认计量规定的前提下自行增设、分拆、合并明细科目，
+#   因此本表只列一级科目，明细科目（如 1002 银行存款下的各开户行）由使用方自行设置。
+#
+# ⚠ 编号体系与《企业会计准则》不同，切换准则时必须重排科目：
+#   小企业准则：1 资产 / 2 负债 / 3 所有者权益 / 4 成本 / 5 损益
+#   企业准则：  1 资产 / 2 负债 / 3 ——  / 4 所有者权益 / 5 成本 / 6 损益
+#   由此产生「同号不同科目」，最典型的三个：
+#     4001 = 企业准则「实收资本」 = 小企业准则「生产成本」
+#     5001 = 企业准则「生产成本」 = 小企业准则「主营业务收入」
+#     5301 = 企业准则「研发支出」 = 小企业准则「营业外收入」
+#   配置文件 config/standard/standards.yaml 的 forbiddenAccounts 因此按
+#   「编码 + 科目名称」双重判定，不能只看编码（详见 src/core/standard/profiles.ts）。
+#
+# 本表**没有**下列企业会计准则专属科目（不是遗漏，是准则差异）：
+#   1. 减值类：1231 坏账准备、1471 存货跌价准备、1603 固定资产减值准备、
+#      1703 无形资产减值准备、6701 资产减值损失、6702 信用减值损失
+#      —— 准则第九条：小企业的资产应当按照成本计量，不计提资产减值准备。
+#   2. 递延所得税：1811 递延所得税资产、2901 递延所得税负债
+#      —— 所得税采用应付税款法，只确认当期应交所得税（6801→5801）。
+#   3. 公允价值类：1101 交易性金融资产、1503 可供出售金融资产、1504 其他权益工具投资、
+#      1521 投资性房地产、6101 公允价值变动损益
+#      —— 投资一律按成本计量，投资性房地产在固定资产/无形资产中核算。
+#   4. 研发支出资本化/开发支出科目：企业准则 5301 研发支出
+#      —— 小企业准则的研发支出在「管理费用」列支，自行开发无形资产仅在完成时
+#         按成本计入无形资产；准则确设有 4301 研发支出用于归集，但不设「开发支出」
+#         报表项目、不单独披露资本化金额。
+#   5. 追溯调整：6901 以前年度损益调整
+#      —— 会计政策变更与差错更正一律采用未来适用法。
+#   6. 租赁资本化：使用权资产、租赁负债
+#      —— 经营租赁按期确认租金费用；融资租入固定资产按付款总额计入固定资产，
+#         同时在「2701 长期应付款」反映未付款项。
+#
+# 字段说明同企业会计准则科目表（code/name/category/balanceSide/parent/leaf/
+# defaultChild/auxiliary/note）。
+# =============================================================================
+
+accounts:
+  # ----------------------- 一、资产类（32 个，顺序号 1-32） -----------------------
+  - { code: "1001", name: 库存现金, category: asset, note: "有内部周转备用金的，可自行增设「1004 备用金」科目" }
+  - { code: "1002", name: 银行存款, category: asset, note: "按开户银行、存款种类分设明细；有外币的分别按人民币和外币明细核算" }
+  - { code: "1012", name: 其他货币资金, category: asset, note: "银行汇票/本票存款、信用卡存款、信用证保证金、外埠存款等" }
+  - { code: "1101", name: 短期投资, category: asset, note: "按成本计量，不按公允价值调整；注意与企业准则的 1101「交易性金融资产」同名号不同科目" }
+  - { code: "1121", name: 应收票据, category: asset, auxiliary: [customer] }
+  - { code: "1122", name: 应收账款, category: asset, auxiliary: [customer] }
+  - { code: "1123", name: 预付账款, category: asset, auxiliary: [supplier], note: "预付账款不多的小企业可不设本科目，直接记入「应付账款」借方" }
+  - { code: "1131", name: 应收股利, category: asset }
+  - { code: "1132", name: 应收利息, category: asset }
+  - { code: "1221", name: 其他应收款, category: asset, auxiliary: [employee, project] }
+  - { code: "1401", name: 材料采购, category: asset }
+  - { code: "1402", name: 在途物资, category: asset }
+  - { code: "1403", name: 原材料, category: asset }
+  - { code: "1404", name: 材料成本差异, category: asset, note: "计划成本法下使用；借方为超支差异、贷方为节约差异" }
+  - { code: "1405", name: 库存商品, category: asset }
+  - { code: "1407", name: 商品进销差价, category: asset, balanceSide: credit, note: "售价金额核算法下使用" }
+  - { code: "1408", name: 委托加工物资, category: asset }
+  - { code: "1411", name: 周转材料, category: asset, note: "包装物、低值易耗品等；也可单设「1412 包装物」「1413 低值易耗品」" }
+  - { code: "1421", name: 消耗性生物资产, category: asset }
+  - { code: "1501", name: 长期债券投资, category: asset, note: "按成本计量；注意与企业准则的 1501「持有至到期投资」同名号不同科目" }
+  - { code: "1511", name: 长期股权投资, category: asset, note: "一律采用成本法核算，不确认被投资单位的损益变动（企业准则可用权益法）" }
+  - { code: "1601", name: 固定资产, category: asset }
+  - { code: "1602", name: 累计折旧, category: asset, balanceSide: credit }
+  - { code: "1604", name: 在建工程, category: asset }
+  - { code: "1605", name: 工程物资, category: asset }
+  - { code: "1606", name: 固定资产清理, category: asset }
+  - { code: "1621", name: 生产性生物资产, category: asset }
+  - { code: "1622", name: 生产性生物资产累计折旧, category: asset, balanceSide: credit }
+  - { code: "1701", name: 无形资产, category: asset, note: "土地使用权、专利权、商标权、著作权、非专利技术等；商誉不单独设科目" }
+  - { code: "1702", name: 累计摊销, category: asset, balanceSide: credit }
+  - { code: "1801", name: 长期待摊费用, category: asset }
+  - { code: "1901", name: 待处理财产损溢, category: asset, note: "盘盈盘亏的过渡科目，期末不得有余额；同时是系统兜底科目（未匹配规则时临时挂账，必须人工清理）" }
+
+  # ----------------------- 二、负债类（12 个，顺序号 33-44） ----------------------
+  - { code: "2001", name: 短期借款, category: liability }
+  - { code: "2201", name: 应付票据, category: liability, auxiliary: [supplier] }
+  - { code: "2202", name: 应付账款, category: liability, auxiliary: [supplier] }
+  - { code: "2203", name: 预收账款, category: liability, auxiliary: [customer] }
+  - { code: "2211", name: 应付职工薪酬, category: liability, auxiliary: [department] }
+  - { code: "2221", name: 应交税费, category: liability, note: "增值税、企业所得税、城建税、教育费附加、印花税、房产税、土地使用税、个人所得税等统一在此核算" }
+  - { code: "2231", name: 应付利息, category: liability }
+  - { code: "2232", name: 应付利润, category: liability, note: "注意：企业准则科目名为「应付股利」（2232）" }
+  - { code: "2241", name: 其他应付款, category: liability, auxiliary: [employee] }
+  - { code: "2401", name: 递延收益, category: liability, note: "与资产相关的政府补助在资产使用寿命内平均分配，转入营业外收入" }
+  - { code: "2501", name: 长期借款, category: liability }
+  - { code: "2701", name: 长期应付款, category: liability, note: "融资租入固定资产的租赁费、分期付款购入固定资产的应付款项" }
+
+  # ------------------- 三、所有者权益类（5 个，顺序号 45-49） -------------------
+  - { code: "3001", name: 实收资本, category: equity, note: "股份有限公司应将本科目名称改为「3001 股本」；投资者出资超过注册资本份额的部分计入资本公积" }
+  - { code: "3002", name: 资本公积, category: equity, note: "仅核算资本溢价；不核算公允价值变动等其他资本公积" }
+  - { code: "3101", name: 盈余公积, category: equity, note: "法定盈余公积按净利润的 10% 提取，累计达注册资本 50% 时可不再提取" }
+  - { code: "3103", name: 本年利润, category: equity, note: "期末结转损益用；年度终了转入 3104 未分配利润" }
+  - { code: "3104", name: 利润分配, category: equity, note: "按「应付利润」「未分配利润」等设置明细" }
+
+  # ---------------------- 四、成本类（5 个，顺序号 50-54） ----------------------
+  - { code: "4001", name: 生产成本, category: cost, note: "可按基本生产成本、辅助生产成本设明细；对外提供劳务为主的小企业可将本科目改为「4001 劳务成本」或另设「4002 劳务成本」" }
+  - { code: "4101", name: 制造费用, category: cost, auxiliary: [department] }
+  - { code: "4301", name: 研发支出, category: cost, note: "归集内部研发支出；期末将费用化部分转入管理费用，完成开发并达到预定用途的部分转入无形资产" }
+  - { code: "4401", name: 工程施工, category: cost, note: "建造合同/施工企业专用；注意与企业准则的 4401 无对应关系（企业准则为 5401 工程施工）" }
+  - { code: "4403", name: 机械作业, category: cost, note: "施工企业自有机械施工发生的费用" }
+
+  # ---------------------- 五、损益类（12 个，顺序号 55-66） ----------------------
+  - { code: "5001", name: 主营业务收入, category: profit, note: "注意与企业准则的 5001「生产成本」同名号不同科目" }
+  - { code: "5051", name: 其他业务收入, category: profit, note: "材料销售、出租资产等收入" }
+  - { code: "5111", name: 投资收益, category: profit, note: "仅核算债券利息收入、股权投资收益（成本法）等，不含公允价值变动" }
+  - { code: "5301", name: 营业外收入, category: profit, note: "政府补助、盘盈、捐赠利得、非流动资产毁损报废利得等；注意与企业准则的 5301「研发支出」同名号不同科目" }
+  - { code: "5401", name: 主营业务成本, category: profit }
+  - { code: "5402", name: 其他业务成本, category: profit }
+  - { code: "5403", name: 税金及附加, category: profit, note: "准则原文为「营业税金及附加」，财会〔2016〕22 号起改称「税金及附加」，房产税、土地使用税、车船税、印花税也并入本户" }
+  - { code: "5601", name: 销售费用, category: profit, auxiliary: [department] }
+  - { code: "5602", name: 管理费用, category: profit, auxiliary: [department], note: "研发费用、开办费、业务招待费等均在此列支" }
+  - { code: "5603", name: 财务费用, category: profit, note: "利息支出、手续费等；利息收入冲减本户" }
+  - { code: "5711", name: 营业外支出, category: profit, note: "盘亏、捐赠支出、罚款支出、非流动资产毁损报废损失等；小企业准则不设「资产处置损益」科目，处置损益也在此核算" }
+  - { code: "5801", name: 所得税费用, category: profit, note: "应付税款法：只确认当期应交所得税，不确认递延所得税" }

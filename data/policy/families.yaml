@@ -1,0 +1,98 @@
+# =============================================================================
+# 政策版本族（data/policy/families.yaml）
+#
+# 「版本族」回答的是：同一个事项，历次出过哪些文件、现在该看哪一份。
+# 与 relations.yaml 的区别：
+#   - relations 描述「两两之间的关系」，是图；
+#   - families 描述「一个事项的完整谱系」，是线。
+# 两者互相印证：族内相邻成员之间通常应当存在 supersedes / amends 边。
+#
+# members 按 effectiveFrom 升序排列（加载后 graph.family() 会再排一次，
+# 即使这里写错顺序也能得到正确结果）。成员必须是 policies.yaml 中真实存在的 id。
+# =============================================================================
+
+version: 1
+updatedAt: 2026-11-01
+
+families:
+  - id: fam-vat-system
+    name: 增值税制度沿革
+    description: 从增值税暂行条例，到营改增试点，再到增值税法，是同一制度的三个阶段。
+    members:
+      - vat-interim-regulation
+      - caishui-2016-36
+      - vat-law-2024
+
+  - id: fam-vat-small-scale
+    name: 小规模纳税人增值税减免
+    description: 2023年第1号到期后由2023年第19号接续，执行期延至2027年底。
+    members:
+      - ann-2023-1
+      - ann-2023-19
+
+  - id: fam-rd-super-deduction
+    name: 研发费用加计扣除比例调整
+    description: 75%（财税〔2018〕99号）→ 制造业100%（2021年第13号）→ 全行业100%（2023年第7号）。
+    members:
+      - caishui-2018-99
+      - ann-2021-13
+      - ann-2023-7
+
+  - id: fam-small-low-profit
+    name: 小型微利企业所得税优惠
+    description: 2023年第6号确定当年口径，2023年第12号把优惠延续至2027年底。
+    members:
+      - ann-2023-6
+      - ann-2023-12
+
+  - id: fam-iit-special-deduction
+    name: 个人所得税专项附加扣除
+    description: 2018年设立六项扣除，2022年增设婴幼儿照护，2023年提高三项扣除标准。
+    members:
+      - guofa-2018-41
+      - guofa-2022-8
+      - guofa-2023-13
+
+  - id: fam-stamp-duty
+    name: 印花税制度
+    description: 1988年暂行条例 → 2022年印花税法 → 配套执行口径公告。
+    members:
+      - stamp-interim
+      - stamp-law
+      - ann-2022-22
+
+  - id: fam-invoice
+    name: 发票管理制度
+    description: 2010年修订的发票管理办法 → 2023年修订 → 数电发票全面推广。
+    members:
+      - invoice-measures-2010
+      - invoice-measures
+      - e-invoice-2024
+
+  - id: fam-tax-collection
+    name: 税收征管制度
+    description: 征管法为程序基本法，实施细则是其操作层面的配套规定。
+    members:
+      - tax-collection-law
+      - tax-collection-rules
+
+  - id: fam-fixed-asset-deduction
+    name: 固定资产折旧与一次性扣除
+    description: 2014年加速折旧政策 → 2024年起设备器具一次性扣除延续执行。
+    members:
+      - caishui-2014-75
+      - ann-2023-37
+
+  - id: fam-accounting-law
+    name: 会计法历次修正
+    description: 2017年修正取消会计从业资格，2024年修正强化会计资料真实完整责任。
+    members:
+      - accounting-law-2017
+      - accounting-law-2024
+
+  - id: fam-personal-housing-property
+    name: 个人住房房产税试点（沪渝两地）
+    description: 2011年上海、重庆两地启动个人住房房产税试点，重庆于2017年修订，两地口径不同、并行有效。
+    members:
+      - sh-property-pilot
+      - cq-property-pilot

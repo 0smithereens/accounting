@@ -1,0 +1,187 @@
+# =============================================================================
+# 合规审核检查项配置
+# =============================================================================
+# 这个文件控制「跑哪些检查、严重度是多少」，不控制检查逻辑本身。
+# 判定规则、法规依据、整改建议都写在代码里（src/review/checks/*.ts），
+# 因为那是监管要求，不应该通过改 YAML 来「放宽」。
+#
+# 配置项说明：
+#   continueOnError  出现 error 后是否继续跑后续检查。默认 true，便于一次性列全问题；
+#                    设为 false 时，遇到第一个 error 就停止（适合快速定位）。
+#   disabled         强制关闭的检查项 id 列表。
+#                    ★ 监管强制项（configurable: false）不允许关闭，写了会直接报错。
+#                      这类检查对应会计法、税收征管法或刑法的强制性要求，
+#                      只能通过整改消除，不能通过配置绕过。
+#   severityOverrides 严重度覆盖：error / warning / info。
+#                    把阻断项下调为 warning 会同时解除阻断（blocking 仅在 error 时生效），
+#                    请谨慎使用，并在审计底稿中说明理由。
+#   checks.<id>      单项配置：
+#                      enabled: false 等价于加入 disabled
+#                      severity: 等价于在 severityOverrides 中登记
+#                      note: 仅供人阅读，程序不解析
+#
+# 评分口径（代码内固定，不可配置）：
+#   满分 100；error -8；warning -2；info -0.5；下限 0。
+#   已人工豁免的结论不扣分；豁免只能针对 warning / info。
+# =============================================================================
+
+version: 1
+
+continueOnError: true
+
+disabled: []
+
+severityOverrides: {}
+
+checks:
+  # ---------------------------- 一、凭证层 ----------------------------
+  VOUCHER-BALANCE-001:
+    enabled: true
+    severity: error
+    note: 借贷不平衡。监管强制项，不可关闭。
+  VOUCHER-EMPTY-001:
+    enabled: true
+    severity: error
+    note: 无分录或全零分录。监管强制项，不可关闭。
+  VOUCHER-DATE-001:
+    enabled: true
+    severity: error
+    note: 日期在未来，或日期与所属期间不一致。监管强制项，不可关闭。
+  VOUCHER-SUMMARY-001:
+    enabled: true
+    severity: warning
+    note: 摘要为空/过短/无信息量。可按企业习惯关闭，但会削弱可追溯性。
+  VOUCHER-ATTACH-001:
+    enabled: true
+    severity: warning
+    note: 附单据数为 0。结账/结转/更正类凭证自动豁免。
+  VOUCHER-SUSPENSE-001:
+    enabled: true
+    severity: error
+    note: 使用兜底科目 1901 挂账。监管强制项，不可关闭。
+  VOUCHER-CASH-001:
+    enabled: true
+    severity: warning
+    note: 库存现金/银行存款出现贷方余额。需要提供 LedgerSnapshot 才能判定。
+  VOUCHER-NEGATIVE-001:
+    enabled: true
+    severity: error
+    note: 同一行借贷同时有值/同时为 0/出现负数。监管强制项，不可关闭。
+  VOUCHER-DUP-001:
+    enabled: true
+    severity: warning
+    note: 日期、金额、科目与逐行金额完全一致的疑似重复凭证。
+
+  # ------------------------ 二、科目与准则层 ------------------------
+  ACC-LEAF-001:
+    enabled: true
+    severity: error
+    note: 使用非明细科目挂分录。可在科目表配置 defaultChild 后关闭。
+  ACC-EXIST-001:
+    enabled: true
+    severity: error
+    note: 科目不在所选准则科目表。监管强制项，不可关闭。
+  ACC-FORBIDDEN-001:
+    enabled: true
+    severity: error
+    note: 使用所选准则禁止的科目（如小企业准则出现 1811）。监管强制项，不可关闭。
+  ACC-DIRECTION-001:
+    enabled: true
+    severity: warning
+    note: 余额方向与科目性质相反。需要提供 LedgerSnapshot 才能判定。
+  ACC-PERIOD-001:
+    enabled: true
+    severity: warning
+    note: 凭证所属期间与本次审核期间不一致（跨期记账）。
+
+  # ---------------------------- 三、税务层 ----------------------------
+  TAX-DRAFT-001:
+    enabled: true
+    severity: error
+    note: 存在未完成复核的申报草稿。监管强制项，不可关闭（Human-in-the-loop）。
+  TAX-NOFILED-001:
+    enabled: true
+    severity: error
+    note: 状态 filed 但缺人工回执。监管强制项，不可关闭。
+  TAX-VAT-MISMATCH-001:
+    enabled: true
+    severity: error
+    note: 销项税额与销售额×税率不符，容差 1 元。监管强制项，不可关闭。
+  TAX-INPUT-001:
+    enabled: true
+    severity: warning
+    note: 连续 3 期增值税留抵。风险提示，可关闭。
+  TAX-SURCHARGE-001:
+    enabled: true
+    severity: error
+    note: 附加税计税依据 ≠ 实缴增值税（+消费税）。监管强制项，不可关闭。
+  TAX-CIT-RATE-001:
+    enabled: true
+    severity: error
+    note: 所得税税率与法定税率/已享受优惠身份不符。监管强制项，不可关闭。
+  TAX-BENEFIT-001:
+    enabled: true
+    severity: warning
+    note: 满足优惠条件但申报表未体现减免，附测算减免额。
+
+  # -------------------------- 四、刑事红线 --------------------------
+  CRIM-TAX-001:
+    enabled: true
+    severity: error
+    note: 逃税比例≥10% 且数额≥5 万元。监管强制项，不可关闭。
+  CRIM-TAX-002:
+    enabled: true
+    severity: error
+    note: 逃税比例≥30% 且数额≥50 万元（加重档）。监管强制项，不可关闭。
+  CRIM-INVOICE-001:
+    enabled: true
+    severity: error
+    note: 同一供应商 30 天内大额进项且无合同/无物流。监管强制项，不可关闭。
+  CRIM-INVOICE-002:
+    enabled: true
+    severity: warning
+    note: >-
+      发票流、资金流、合同流不一致。降为 warning 的理由：分期付款、预收款、框架合同
+      会让「本期开票额」与「本期付款额」天然不等，这是最常见的正常差异；若按 error 处理，
+      每期都会报警，反而让人对真正的刑事风险脱敏。仍保留在报告中并要求人工核实，
+      重大异常（大额进项且合同与物流同时缺失）由 CRIM-INVOICE-001 以 error 拦截。
+
+  # -------------------------- 五、报表勾稽 --------------------------
+  STMT-BALANCE-001:
+    enabled: true
+    severity: error
+    note: 资产 ≠ 负债 + 所有者权益。监管强制项，不可关闭。
+  STMT-CASH-001:
+    enabled: true
+    severity: error
+    note: 现金流量表期末现金 ≠ 资产负债表货币资金。监管强制项，不可关闭。
+  STMT-NET-001:
+    enabled: true
+    severity: error
+    note: 利润表净利润 ≠ 所有者权益变动表净利润。监管强制项，不可关闭。
+  STMT-CONTINUITY-001:
+    enabled: true
+    severity: error
+    note: 期初余额 ≠ 上年年末余额。需要同时提供上年年末报表才能判定。
+
+  # ---------------------- 六、数据质量与内控 ----------------------
+  DATA-MISSING-001:
+    enabled: true
+    severity: warning
+    note: 单据缺日期/金额。可关闭，但建议保留。
+  DATA-UNMATCHED-001:
+    enabled: true
+    severity: warning
+    note: 单据未匹配到记账规则（账外业务）。建议保留。
+  IC-SEGREGATION-001:
+    enabled: true
+    severity: error
+    note: 同一人既编制又复核/审批。监管强制项，不可关闭。
+  IC-SIGNATURE-001:
+    enabled: true
+    severity: error
+    note: 已复核/已审批/已申报但缺少人工签署（HITL）。监管强制项，不可关闭。
+  IC-SOFTDELETE-001:
+    enabled: true
+    severity: error
+    note: 凭证断号/重号/删除告警，疑似物理删除。监管强制项，不可关闭。

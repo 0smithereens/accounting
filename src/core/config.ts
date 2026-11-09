@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 import type { AccountDef, EntryTemplate, Rule, SourceKind } from './types.ts';
+import type { AccountingStandardId } from './contracts.ts';
+import { loadAccountMap, remapRules, resolveForStandard, type AccountRemapTable } from './remap.ts';
 import { sortRules } from './rules.ts';
 
 export const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -96,8 +98,8 @@ export interface AccountResolveResult {
   problem?: string;
 }
 
-export function loadAccounts(configDir = CONFIG_DIR): AccountTable {
-  const path = join(configDir, 'chart-of-accounts.yaml');
+export function loadAccounts(configDir = CONFIG_DIR, explicitPath?: string): AccountTable {
+  const path = explicitPath ?? join(configDir, 'chart-of-accounts.yaml');
   const doc = readYamlFile(path);
 
   const listRaw = isRecord(doc) && Array.isArray(doc['accounts'])
@@ -518,6 +520,12 @@ export interface AppSettings {
    *  - "1002"：视为报销时已直接付款。只处理报销单、不导入银行流水时用这个。
    */
   expenseCreditAccount: string;
+  /**
+   * 采用的会计准则：cas（企业会计准则）/ small（小企业会计准则）。
+   * 这一项决定了：加载哪套科目表、哪些科目被禁止、报表用哪套格式、
+   * 审核引擎启用哪套检查集。切换它等于切换整套核算口径。
+   */
+  accountingStandard: AccountingStandardId;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -532,6 +540,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   departments: [],
   companyNames: [],
   expenseCreditAccount: '2241.04',
+  // 中小企业占绝大多数，默认用小企业会计准则；大企业可在 settings.yaml 改成 cas
+  accountingStandard: 'small',
 };
 
 export function loadSettings(configDir = CONFIG_DIR): AppSettings {
@@ -563,16 +573,61 @@ export function loadSettings(configDir = CONFIG_DIR): AppSettings {
   const expenseCreditAccount = optionalString(doc['expenseCreditAccount']);
   if (expenseCreditAccount !== undefined) settings.expenseCreditAccount = expenseCreditAccount;
 
+  // 会计准则：只接受 cas / small，写错时立刻报错，绝不静默降级——
+  // 静默降级会导致用错科目表，是最危险的配置错误。
+  const standardRaw = optionalString(doc['accountingStandard']);
+  if (standardRaw !== undefined) {
+    const normalized = standardRaw.toLowerCase();
+    if (normalized !== 'cas' && normalized !== 'small') {
+      throw new ConfigError(
+        `settings.accountingStandard 只能是 cas（企业会计准则）或 small（小企业会计准则），实际为「${standardRaw}」`,
+      );
+    }
+    settings.accountingStandard = normalized;
+  }
+
   return settings;
 }
 
-/** 一次性加载全部配置。 */
 export interface AppConfig {
   accounts: AccountTable;
   rules: RuleSet;
   settings: AppSettings;
   dedup: DedupConfig;
   configDir: string;
+  /**
+   * 科目重映射记录（仅当使用的不是企业会计准则时存在）。
+   * 上层用它解释「为什么某条规则没生效」——这比静默跳过重要得多。
+   */
+  remap?: {
+    rewrites: Array<{ ruleId: string; from: string; to: string }>;
+    dropped: Array<{ ruleId: string; desc: string; account: string; reason: string }>;
+  };
+  /**
+   * 科目映射表本体（非企业会计准则时存在）。
+   * 供系统生成的凭证（折旧、摊销、结转）把硬编码的企业准则科目改写到目标准则。
+   */
+  remapTable?: AccountRemapTable;
+}
+
+/**
+ * 把一个科目编码解析到当前配置所用准则下的实际科目。
+ *
+ * 与 accounts.resolve() 的区别：resolve 只沿 defaultChild 向下钻，
+ * 而这里先按准则映射表改写（6001 → 5001），再校准到存在的明细科目。
+ */
+export function resolveAccountCode(config: AppConfig, code: string): { code: string; changed: boolean; reason?: string } {
+  if (config.remapTable === undefined) {
+    const r = config.accounts.resolve(code);
+    return { code: r.code, changed: r.changed, ...(r.problem === undefined ? {} : { reason: r.problem }) };
+  }
+  const mapped = resolveForStandard(code, config.accounts, config.remapTable);
+  if (mapped.code === null) {
+    const r = config.accounts.resolve(code);
+    return { code: r.code, changed: r.changed, reason: mapped.reason ?? r.problem };
+  }
+  const r = config.accounts.resolve(mapped.code);
+  return { code: r.code, changed: true, ...(r.problem === undefined ? {} : { reason: r.problem }) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -687,12 +742,54 @@ export function loadDedup(configDir = CONFIG_DIR): DedupConfig {
   return { enabled, pairs };
 }
 
-export function loadConfig(configDir = CONFIG_DIR): AppConfig {
+/**
+ * 按会计准则解析科目表文件路径。
+ *
+ * 优先用 config/standard/<standard>/chart-of-accounts.yaml（准则双轨后的事实来源）；
+ * 该文件不存在时回退到 config/chart-of-accounts.yaml，保证老配置与老测试不会因为
+ * 目录结构调整而突然崩掉——但会在返回值的 chartSource 里标出来，便于提示用户迁移。
+ */
+export function resolveChartPath(configDir: string, standard: AccountingStandardId): {
+  path: string;
+  fromStandard: boolean;
+} {
+  const standardPath = join(configDir, 'standard', standard, 'chart-of-accounts.yaml');
+  if (existsSync(standardPath)) return { path: standardPath, fromStandard: true };
+  return { path: join(configDir, 'chart-of-accounts.yaml'), fromStandard: false };
+}
+
+/** 一次性加载全部配置。 */
+export function loadConfig(configDir = CONFIG_DIR, standardOverride?: AccountingStandardId): AppConfig {
+  const settings = loadSettings(configDir);
+  // 临时覆盖（CLI --standard / Web 切换预览）：只影响本次加载，不改配置文件
+  if (standardOverride !== undefined) settings.accountingStandard = standardOverride;
+  // 科目表跟随会计准则：cas 与 small 是两套不同的科目体系，不能共用一张表
+  const chart = resolveChartPath(configDir, settings.accountingStandard);
+  const accounts = loadAccounts(configDir, chart.path);
+  const baseRules = loadRules(configDir);
+
+  // 业务规则只维护企业会计准则一套；用其它准则时按映射表改写科目编码。
+  // 不这么做的话，小企业准则下「4001 实收资本」会被记成「4001 生产成本」——
+  // 同号不同义的错账比报错危险得多。
+  if (settings.accountingStandard === 'cas') {
+    return { accounts, rules: baseRules, settings, dedup: loadDedup(configDir), configDir };
+  }
+
+  const mapPath = join(configDir, 'standard', settings.accountingStandard, 'account-map.yaml');
+  const map = loadAccountMap(mapPath);
+  const remapped = remapRules(baseRules.rules, accounts, map);
+
+  // 报销贷方科目这类「设置里的科目」同样要改写，否则小企业准则下找不到 2241.04
+  const credit = resolveForStandard(settings.expenseCreditAccount, accounts, map);
+  if (credit.code !== null) settings.expenseCreditAccount = credit.code;
+
   return {
-    accounts: loadAccounts(configDir),
-    rules: loadRules(configDir),
-    settings: loadSettings(configDir),
+    accounts,
+    rules: { rules: remapped.rules, byId: remapped.byId, files: baseRules.files },
+    settings,
     dedup: loadDedup(configDir),
     configDir,
+    remap: { rewrites: remapped.rewrites, dropped: remapped.dropped },
+    remapTable: map,
   };
 }

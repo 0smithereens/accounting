@@ -1,0 +1,1148 @@
+# =============================================================================
+# 政策库数据集（data/policy/policies.yaml）
+#
+# 收录范围：中国现行税收法律、行政法规、部门规章与重要规范性文件，
+#           以及与「记账—报税」直接相关的会计法规。
+#
+# 数据约定（loader 会强校验）：
+#   id           小写字母/数字/连字符，全库唯一，被 relations / families / business-events 引用
+#   documentNo   文号；文号规范化后允许「财税〔2016〕36号 / 财税[2016]36号」等价检索
+#   issuedAt     发布日期（成文/公布日期）
+#   effectiveFrom 施行日期；追溯执行的公告（如2023年第19号）可早于发布日期
+#   effectiveTo  失效日期（含当日）；未废止则不填
+#   lifecycle    effective 现行有效 / amended 已修改 / superseded 已被替代 / repealed 已废止 / draft 草案
+#   level        central 中央 / local 地方（地方必须标 region）
+#   taxCodes     19 个税种编码，见 src/policy/library.ts 的 POLICY_TAX_CODES
+#
+# 准确性说明：文号、发文机关、发布日期、施行日期均按公开发布信息填写；
+#             涉及具体条文计算的表述只写到「制度要点」层面，不复制法条原文，
+#             实际适用一律以官方发布文本与主管税务机关口径为准。
+# =============================================================================
+
+version: 1
+updatedAt: 2026-11-01
+# 数据来源：全国人大网（npc.gov.cn）、中国政府网（gov.cn）、财政部（mof.gov.cn）、
+#           国家税务总局（chinatax.gov.cn）公开发布文本。
+
+policies:
+  # ---------------------------------------------------------------------------
+  # 一、增值税
+  # ---------------------------------------------------------------------------
+  - id: vat-law-2024
+    documentNo: 中华人民共和国主席令第四十一号
+    title: 中华人民共和国增值税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2024-12-25
+    effectiveFrom: 2026-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    url: https://www.gov.cn/yaowen/liebiao/202412/content_6994557.htm
+    summary: 我国第一部增值税法，把营改增以来形成的增值税制度上升为法律，自2026年1月1日起施行。
+    keyPoints:
+      - 在境内销售货物、服务、无形资产、不动产以及进口货物的单位和个人为增值税纳税人。
+      - 维持 13%、9%、6% 三档税率与小规模纳税人简易计税的制度框架。
+      - 对小规模纳税人、起征点、免税项目和留抵退税等作出法律规定。
+      - 自2026年1月1日起施行，《中华人民共和国增值税暂行条例》同时废止。
+    tags: [增值税, 法律, 2026年施行, 税制改革]
+
+  - id: vat-interim-regulation
+    documentNo: 国务院令第538号
+    title: 中华人民共和国增值税暂行条例
+    issuer: 国务院
+    issuedAt: 2008-11-10
+    effectiveFrom: 2009-01-01
+    effectiveTo: 2025-12-31
+    lifecycle: superseded
+    level: central
+    taxCodes: [vat]
+    summary: 增值税的基础行政法规，确立一般计税方法与简易计税方法，2026年起由增值税法取代。
+    keyPoints:
+      - 销售货物、提供加工修理修配劳务及进口货物的单位和个人为纳税人。
+      - 一般纳税人适用税率计税并可抵扣进项税额，小规模纳税人适用征收率。
+      - 规定了免税项目、起征点与纳税义务发生时间等基本制度。
+    tags: [增值税, 行政法规, 已废止]
+
+  - id: caishui-2016-36
+    documentNo: 财税〔2016〕36号
+    title: 财政部 国家税务总局关于全面推开营业税改征增值税试点的通知
+    issuer: 财政部 国家税务总局
+    issuedAt: 2016-03-23
+    effectiveFrom: 2016-05-01
+    lifecycle: amended
+    level: central
+    taxCodes: [vat]
+    summary: 营改增的纲领性文件，把建筑业、房地产业、金融业、生活服务业纳入增值税，附四个附件规定具体办法。
+    keyPoints:
+      - 自2016年5月1日起全面推开营改增试点，营业税退出历史舞台。
+      - 附件1规定试点实施办法，明确税率、进项抵扣与差额征税等规则。
+      - 附件3列示营改增试点过渡政策与免税项目。
+      - 部分条款已被后续深化增值税改革文件调整，适用时须核对最新口径。
+    tags: [增值税, 营改增, 试点, 基础性文件]
+
+  - id: ann-2019-39
+    documentNo: 财政部 税务总局 海关总署公告2019年第39号
+    title: 财政部 税务总局 海关总署关于深化增值税改革有关政策的公告
+    issuer: 财政部 国家税务总局 海关总署
+    issuedAt: 2019-03-20
+    effectiveFrom: 2019-04-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 2019年深化增值税改革的核心文件，下调税率、扩大进项抵扣范围并引入加计抵减与留抵退税。
+    keyPoints:
+      - 原16%税率降为13%，原10%税率降为9%，6%一档保持不变。
+      - 允许不动产进项税额一次性全额抵扣，不再分两年抵扣。
+      - 对生产、生活性服务业纳税人实行进项税额加计抵减。
+      - 试行增值税期末留抵税额退税制度。
+    tags: [增值税, 税率调整, 加计抵减, 留抵退税]
+
+  - id: ann-2023-1
+    documentNo: 财政部 税务总局公告2023年第1号
+    title: 财政部 税务总局关于明确增值税小规模纳税人减免增值税等政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-01-09
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2023-12-31
+    lifecycle: superseded
+    level: central
+    taxCodes: [vat]
+    summary: 明确2023年度小规模纳税人月销售额10万元以下免征增值税、3%征收率减按1%征收等政策。
+    keyPoints:
+      - 月销售额10万元以下（按季30万元以下）的小规模纳税人免征增值税。
+      - 适用3%征收率的应税销售收入减按1%征收率征收。
+      - 执行期为2023年1月1日至2023年12月31日，后续由2023年第19号延续。
+    tags: [增值税, 小规模纳税人, 减免, 2023年]
+
+  - id: ann-2023-19
+    documentNo: 财政部 税务总局公告2023年第19号
+    title: 财政部 税务总局关于增值税小规模纳税人减免增值税政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-08-01
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    url: https://www.gov.cn/zhengce/zhengceku/202308/content_6896287.htm
+    summary: 把小规模纳税人月销售额10万元以下免征、3%减按1%征收的政策延续执行至2027年12月31日。
+    keyPoints:
+      - 月销售额10万元以下（含本数）的增值税小规模纳税人免征增值税。
+      - 适用3%征收率的应税销售收入，减按1%征收率征收增值税。
+      - 政策执行至2027年12月31日，是编制小规模纳税人申报草稿的直接依据。
+    tags: [增值税, 小规模纳税人, 减免, 现行有效]
+
+  - id: ann-2023-43
+    documentNo: 财政部 税务总局公告2023年第43号
+    title: 财政部 税务总局关于先进制造业企业增值税加计抵减政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-09-03
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 允许先进制造业企业按当期可抵扣进项税额加计5%抵减应纳增值税税额，执行至2027年底。
+    keyPoints:
+      - 适用对象为高新技术企业中的制造业一般纳税人，名单由省级工信部门会同有关部门确定。
+      - 按当期可抵扣进项税额的5%计提加计抵减额。
+      - 加计抵减额只能抵减应纳税额，不得结转下期继续抵减。
+      - 政策执行期为2023年1月1日至2027年12月31日。
+    tags: [增值税, 加计抵减, 先进制造业, 优惠]
+
+  - id: caishui-2012-39
+    documentNo: 财税〔2012〕39号
+    title: 财政部 国家税务总局关于出口货物劳务增值税和消费税政策的通知
+    issuer: 财政部 国家税务总局
+    issuedAt: 2012-05-25
+    effectiveFrom: 2012-07-01
+    lifecycle: amended
+    level: central
+    taxCodes: [vat, consumption]
+    summary: 规定出口货物劳务适用免抵退税、免退税与免税政策的情形及计算方法，是出口退税的基础性文件。
+    keyPoints:
+      - 区分生产企业免抵退税与外贸企业免退税两类办法。
+      - 明确出口货物劳务退税率与不得免征和抵扣税额的计算口径。
+      - 列示适用免税政策与征税政策的出口货物情形。
+    tags: [增值税, 消费税, 出口退税, 免抵退]
+
+  - id: ann-2022-14
+    documentNo: 财政部 税务总局公告2022年第14号
+    title: 财政部 税务总局关于进一步加大增值税期末留抵退税政策实施力度的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2022-03-21
+    effectiveFrom: 2022-04-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 扩大留抵退税范围、放宽条件并提高退还比例，是2022年组合式税费支持政策的核心文件之一。
+    keyPoints:
+      - 将小微企业、制造业等行业纳入存量留抵税额一次性退还范围。
+      - 允许符合条件的纳税人申请退还增量留抵税额和存量留抵税额。
+      - 与纳税信用等级、是否享受即征即退等条件挂钩。
+    tags: [增值税, 留抵退税, 组合式税费支持]
+
+  - id: gs-2019-14
+    documentNo: 国家税务总局公告2019年第14号
+    title: 国家税务总局关于深化增值税改革有关事项的公告
+    issuer: 国家税务总局
+    issuedAt: 2019-03-21
+    effectiveFrom: 2019-04-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 明确深化增值税改革后的申报表调整、发票开具衔接与加计抵减的申报口径。
+    keyPoints:
+      - 调整增值税纳税申报表及附列资料栏次，配合税率下调。
+      - 明确降税率后补开发票、红字发票开具的衔接处理。
+      - 规定加计抵减额的申报表填报位置与台账要求。
+    tags: [增值税, 征管, 申报表, 发票]
+
+  # ---------------------------------------------------------------------------
+  # 二、企业所得税
+  # ---------------------------------------------------------------------------
+  - id: cit-law
+    documentNo: 中华人民共和国主席令第六十三号
+    title: 中华人民共和国企业所得税法
+    issuer: 全国人民代表大会
+    issuedAt: 2007-03-16
+    effectiveFrom: 2008-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [cit]
+    summary: 统一内外资企业所得税的基本法律，确立25%法定税率、税前扣除与税收优惠的基本框架。
+    keyPoints:
+      - 居民企业就境内外所得纳税，非居民企业就来源于中国境内所得纳税。
+      - 法定税率25%，符合条件的小型微利企业与高新技术企业适用优惠税率。
+      - 规定不得扣除项目、亏损弥补期限与关联交易特别纳税调整。
+      - 2017年、2018年分别对部分条款作了修正。
+    tags: [企业所得税, 法律, 基本法]
+
+  - id: cit-regulation
+    documentNo: 国务院令第512号
+    title: 中华人民共和国企业所得税法实施条例
+    issuer: 国务院
+    issuedAt: 2007-12-06
+    effectiveFrom: 2008-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [cit]
+    summary: 企业所得税法的实施细则，把税前扣除标准、资产处理与优惠条件落到可操作口径。
+    keyPoints:
+      - 明确工资薪金、职工福利费、业务招待费、广告费等扣除限额的计算口径。
+      - 规定固定资产折旧年限、无形资产摊销年限与存货成本计算方法。
+      - 细化小型微利企业、高新技术企业等优惠政策的适用条件。
+    tags: [企业所得税, 行政法规, 税前扣除]
+
+  - id: caishui-2018-99
+    documentNo: 财税〔2018〕99号
+    title: 财政部 税务总局 科技部关于提高研究开发费用税前加计扣除比例的通知
+    issuer: 财政部 国家税务总局 科技部
+    issuedAt: 2018-09-20
+    effectiveFrom: 2018-01-01
+    effectiveTo: 2020-12-31
+    lifecycle: superseded
+    level: central
+    taxCodes: [cit]
+    summary: 将企业研发费用加计扣除比例由50%提高到75%，并允许在2018年至2020年期间执行。
+    keyPoints:
+      - 未形成无形资产计入当期损益的研发费用，按实际发生额的75%在税前加计扣除。
+      - 形成无形资产的，按无形资产成本的175%在税前摊销。
+      - 政策执行期为2018年1月1日至2020年12月31日，后续由2023年第7号提高至100%。
+    tags: [企业所得税, 研发费用, 加计扣除, 已替代]
+
+  - id: ann-2021-13
+    documentNo: 财政部 税务总局公告2021年第13号
+    title: 财政部 税务总局关于进一步完善研发费用税前加计扣除政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2021-03-31
+    effectiveFrom: 2021-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 将制造业企业研发费用加计扣除比例提高到100%，并把制造业企业的判定口径明确下来。
+    keyPoints:
+      - 制造业企业研发费用未形成无形资产的，按实际发生额的100%加计扣除。
+      - 形成无形资产的，按无形资产成本的200%在税前摊销。
+      - 制造业企业范围按主营业务收入占比等口径判定。
+    tags: [企业所得税, 研发费用, 加计扣除, 制造业]
+
+  - id: ann-2023-7
+    documentNo: 财政部 税务总局公告2023年第7号
+    title: 财政部 税务总局关于进一步完善研发费用税前加计扣除政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-03-26
+    effectiveFrom: 2023-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 自2023年起把研发费用加计扣除100%的比例扩大到所有符合条件的企业，不再限于制造业。
+    keyPoints:
+      - 企业研发费用未形成无形资产计入当期损益的，按实际发生额的100%加计扣除。
+      - 形成无形资产的，按无形资产成本的200%在税前摊销。
+      - 适用主体为除负面清单行业外的查账征收居民企业。
+      - 与研发费用辅助账、项目立项资料等留存备查要求配套执行。
+    tags: [企业所得税, 研发费用, 加计扣除, 100%]
+
+  - id: ann-2023-6
+    documentNo: 财政部 税务总局公告2023年第6号
+    title: 财政部 税务总局关于小微企业和个体工商户所得税优惠政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-03-26
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2024-12-31
+    lifecycle: superseded
+    level: central
+    taxCodes: [cit, iit]
+    summary: 明确小型微利企业年应纳税所得额不超过100万元部分减按25%计入应纳税所得额、按20%税率缴纳企业所得税。
+    keyPoints:
+      - 小型微利企业年应纳税所得额不超过100万元的部分，减按25%计入应纳税所得额。
+      - 按20%的税率缴纳企业所得税，实际税负为5%。
+      - 个体工商户年应纳税所得额不超过100万元的部分，在现行优惠基础上减半征收个人所得税。
+    tags: [企业所得税, 个人所得税, 小型微利企业, 优惠]
+
+  - id: ann-2023-12
+    documentNo: 财政部 税务总局公告2023年第12号
+    title: 财政部 税务总局关于进一步支持小微企业和个体工商户发展有关税费政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-08-02
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [cit, iit, surcharge, resource, urban_construction, property, urban_land, stamp, farmland]
+    url: https://m.mof.gov.cn/zcfb/202308/t20230802_3899800.htm
+    summary: 延续并加大小微企业、个体工商户税费优惠力度，覆盖「六税两费」减半、小微企业所得税与个体户个税减半。
+    keyPoints:
+      - 对增值税小规模纳税人、小型微利企业和个体工商户减半征收资源税、城市维护建设税、房产税、城镇土地使用税、印花税（不含证券交易印花税）、耕地占用税和教育费附加、地方教育附加。
+      - 小型微利企业减按25%计算应纳税所得额、按20%税率缴纳企业所得税的政策延续至2027年12月31日。
+      - 个体工商户年应纳税所得额不超过200万元的部分减半征收个人所得税。
+      - 「六税两费」优惠可与其他优惠政策叠加享受。
+    tags: [六税两费, 小型微利企业, 个体工商户, 减半征收]
+
+  - id: gs-2018-28
+    documentNo: 国家税务总局公告2018年第28号
+    title: 国家税务总局关于发布《企业所得税税前扣除凭证管理办法》的公告
+    issuer: 国家税务总局
+    issuedAt: 2018-06-06
+    effectiveFrom: 2018-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 统一规定企业所得税税前扣除凭证的种类、取得要求与补救措施，是审核「无票支出」的直接依据。
+    keyPoints:
+      - 税前扣除凭证分为内部凭证与外部凭证，发票属于外部凭证的一种。
+      - 属于增值税应税项目的支出，对方为已办理税务登记的纳税人时以发票作为扣除凭证。
+      - 应当取得而未取得凭证的，可在汇算清缴期结束前补开、换开。
+      - 规定了无法补开凭证时的替代资料要求。
+    tags: [企业所得税, 税前扣除, 凭证, 发票]
+
+  - id: caishui-2009-59
+    documentNo: 财税〔2009〕59号
+    title: 财政部 国家税务总局关于企业重组业务企业所得税处理若干问题的通知
+    issuer: 财政部 国家税务总局
+    issuedAt: 2009-04-30
+    effectiveFrom: 2008-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [cit]
+    summary: 规定企业重组业务的一般性税务处理与特殊性税务处理，是并购重组成立税务处理的基础文件。
+    keyPoints:
+      - 明确法律形式改变、债务重组、股权收购、资产收购、合并、分立的税务处理规则。
+      - 符合条件并选择特殊性税务处理的，可暂不确认有关资产的转让所得或损失。
+      - 特殊性税务处理需满足合理商业目的、股权支付比例与经营连续性等条件。
+    tags: [企业所得税, 企业重组, 特殊性税务处理]
+
+  - id: caishui-2014-75
+    documentNo: 财税〔2014〕75号
+    title: 财政部 国家税务总局关于完善固定资产加速折旧企业所得税政策的通知
+    issuer: 财政部 国家税务总局
+    issuedAt: 2014-10-20
+    effectiveFrom: 2014-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [cit]
+    summary: 允许特定行业和单位价值较低的固定资产缩短折旧年限或采用加速折旧方法，是折旧税会差异的主要来源。
+    keyPoints:
+      - 生物药品制造等六大行业新购进的固定资产可缩短折旧年限或加速折旧。
+      - 单位价值不超过5000元的固定资产允许一次性计入当期成本费用。
+      - 会计上仍按直线法计提折旧的，形成税会差异，需在汇算清缴时调整。
+    tags: [企业所得税, 固定资产, 加速折旧, 税会差异]
+
+  - id: ann-2023-37
+    documentNo: 财政部 税务总局公告2023年第37号
+    title: 财政部 税务总局关于设备、器具扣除有关企业所得税政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-08-18
+    effectiveFrom: 2024-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 2024年至2027年新购进单位价值不超过500万元的设备器具，允许一次性税前扣除。
+    keyPoints:
+      - 企业在2024年1月1日至2027年12月31日期间新购进的设备、器具，单位价值不超过500万元的，允许一次性计入当期成本费用在税前扣除。
+      - 单位价值超过500万元的，仍按实施条例及加速折旧政策处理。
+      - 一次性扣除是税务处理选择，会计上仍应正常计提折旧，形成税会差异。
+    tags: [企业所得税, 设备器具, 一次性扣除, 税会差异]
+
+  - id: gs-2016-42
+    documentNo: 国家税务总局公告2016年第42号
+    title: 国家税务总局关于完善关联申报和同期资料管理有关事项的公告
+    issuer: 国家税务总局
+    issuedAt: 2016-06-29
+    effectiveFrom: 2016-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 规定关联业务往来报告表填报义务与同期资料准备要求，是转让定价合规的操作依据。
+    keyPoints:
+      - 实行查账征收的居民企业年度关联购销金额达到规定标准的，应填报关联业务往来报告表。
+      - 同期资料分为主体文档、本地文档和特殊事项文档。
+      - 关联关系按持股比例、资金借贷、购销依赖等标准判定。
+    tags: [企业所得税, 关联交易, 转让定价, 同期资料]
+
+  - id: ann-2023-44
+    documentNo: 财政部 税务总局 国家发展改革委 工业和信息化部公告2023年第44号
+    title: 财政部 税务总局 国家发展改革委 工业和信息化部关于提高集成电路和工业母机企业研发费用加计扣除比例的公告
+    issuer: 财政部 国家税务总局 国家发展和改革委员会 工业和信息化部
+    issuedAt: 2023-09-03
+    effectiveFrom: 2023-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [cit]
+    summary: 对集成电路和工业母机企业按120%加计扣除研发费用，属于研发加计扣除的行业特别规定。
+    keyPoints:
+      - 集成电路企业和工业母机企业研发费用未形成无形资产的，按实际发生额的120%加计扣除。
+      - 形成无形资产的，按无形资产成本的220%在税前摊销。
+      - 执行期为2023年1月1日至2027年12月31日，具体适用主体以清单为准。
+    tags: [企业所得税, 研发费用, 加计扣除, 集成电路]
+
+  # ---------------------------------------------------------------------------
+  # 三、个人所得税
+  # ---------------------------------------------------------------------------
+  - id: iit-law
+    documentNo: 中华人民共和国主席令第九号
+    title: 中华人民共和国个人所得税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2018-08-31
+    effectiveFrom: 2019-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 2018年修正后的个人所得税法，建立综合与分类相结合的税制，引入专项附加扣除与年度汇算。
+    keyPoints:
+      - 工资薪金、劳务报酬、稿酬、特许权使用费四项并入综合所得，按年计算、按月预扣预缴。
+      - 综合所得基本减除费用为每年6万元。
+      - 设立子女教育、继续教育、大病医疗、住房贷款利息、住房租金、赡养老人等专项附加扣除。
+      - 居民个人取得综合所得需要办理年度汇算清缴。
+    tags: [个人所得税, 法律, 综合所得, 专项附加扣除]
+
+  - id: iit-regulation
+    documentNo: 国务院令第707号
+    title: 中华人民共和国个人所得税法实施条例
+    issuer: 国务院
+    issuedAt: 2018-12-18
+    effectiveFrom: 2019-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 个人所得税法的实施细则，明确居民个人判定、所得来源地、各项所得的计算与征收管理。
+    keyPoints:
+      - 在中国境内有住所，或者无住所而一个纳税年度内在境内居住累计满183天的个人为居民个人。
+      - 细化工资薪金、劳务报酬、稿酬、特许权使用费的收入额计算口径。
+      - 明确经营所得、财产租赁所得、财产转让所得等分类所得的计税方法。
+    tags: [个人所得税, 行政法规, 居民个人]
+
+  - id: gs-2018-61
+    documentNo: 国家税务总局公告2018年第61号
+    title: 国家税务总局关于全面实施新个人所得税法若干征管衔接问题的公告
+    issuer: 国家税务总局
+    issuedAt: 2018-12-19
+    effectiveFrom: 2019-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 确立工资薪金累计预扣法，规定扣缴义务人的预扣预缴与申报操作方法。
+    keyPoints:
+      - 居民个人工资薪金所得按累计预扣法计算预扣税款，年度内逐月累进。
+      - 劳务报酬、稿酬、特许权使用费按次或按月预扣预缴。
+      - 扣缴义务人应在次月十五日内向主管税务机关报送扣缴申报表。
+    tags: [个人所得税, 累计预扣, 扣缴申报]
+
+  - id: guofa-2018-41
+    documentNo: 国发〔2018〕41号
+    title: 国务院关于印发个人所得税专项附加扣除暂行办法的通知
+    issuer: 国务院
+    issuedAt: 2018-12-13
+    effectiveFrom: 2019-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [iit]
+    summary: 规定六项专项附加扣除的适用范围、扣除标准与分摊方式，是工资表个税计算的直接依据。
+    keyPoints:
+      - 子女教育、继续教育、大病医疗、住房贷款利息、住房租金、赡养老人六项扣除。
+      - 规定各项扣除的月度标准、扣除主体与分摊协议要求。
+      - 纳税人应对专项附加扣除信息的真实性、准确性、完整性负责。
+    tags: [个人所得税, 专项附加扣除, 工资表]
+
+  - id: guofa-2022-8
+    documentNo: 国发〔2022〕8号
+    title: 国务院关于设立3岁以下婴幼儿照护个人所得税专项附加扣除的通知
+    issuer: 国务院
+    issuedAt: 2022-03-28
+    effectiveFrom: 2022-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 增设3岁以下婴幼儿照护专项附加扣除，按每个婴幼儿每月1000元的标准定额扣除。
+    keyPoints:
+      - 纳税人照护3岁以下婴幼儿子女的支出，按每个婴幼儿每月1000元的标准定额扣除。
+      - 父母可以选择由一方扣除100%，也可以各扣50%。
+      - 自2022年1月1日起执行。
+    tags: [个人所得税, 专项附加扣除, 婴幼儿照护]
+
+  - id: guofa-2023-13
+    documentNo: 国发〔2023〕13号
+    title: 国务院关于提高个人所得税有关专项附加扣除标准的通知
+    issuer: 国务院
+    issuedAt: 2023-08-28
+    effectiveFrom: 2023-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 提高3岁以下婴幼儿照护、子女教育、赡养老人三项专项附加扣除标准，自2023年1月1日起执行。
+    keyPoints:
+      - 3岁以下婴幼儿照护、子女教育专项附加扣除标准由每个子女每月1000元提高到2000元。
+      - 赡养老人专项附加扣除标准由每月2000元提高到3000元。
+      - 自2023年1月1日起执行，此前多缴税款可按规定抵减或退还。
+    tags: [个人所得税, 专项附加扣除, 提高标准, 2023年]
+
+  - id: ann-2023-30
+    documentNo: 财政部 税务总局公告2023年第30号
+    title: 财政部 税务总局关于延续实施全年一次性奖金个人所得税政策的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2023-08-18
+    effectiveFrom: 2024-01-01
+    effectiveTo: 2027-12-31
+    lifecycle: effective
+    level: central
+    taxCodes: [iit]
+    summary: 将全年一次性奖金单独计税政策延续执行至2027年12月31日，是年终奖计税方式选择的依据。
+    keyPoints:
+      - 居民个人取得全年一次性奖金，可以选择不并入当年综合所得，单独计算纳税。
+      - 以奖金收入除以12个月得到的数额确定适用税率和速算扣除数。
+      - 该政策一个纳税年度内只能使用一次，执行至2027年12月31日。
+    tags: [个人所得税, 年终奖, 单独计税, 优惠]
+
+  # ---------------------------------------------------------------------------
+  # 四、印花税
+  # ---------------------------------------------------------------------------
+  - id: stamp-law
+    documentNo: 中华人民共和国主席令第八十九号
+    title: 中华人民共和国印花税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2021-06-10
+    effectiveFrom: 2022-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [stamp]
+    url: https://www.gov.cn/xinwen/2021-06/10/content_5616886.htm
+    summary: 把印花税暂行条例上升为法律，明确税目税率表、计税依据与免税凭证范围，自2022年7月1日起施行。
+    keyPoints:
+      - 印花税以书立应税凭证、进行证券交易的单位和个人为纳税人。
+      - 税目税率表列示借款合同、买卖合同、产权转移书据等税目与税率。
+      - 应税合同按合同所列金额确定计税依据，不包括列明的增值税税款。
+      - 营业账簿按实收资本与资本公积合计金额的万分之二点五计税。
+    tags: [印花税, 法律, 税目税率表]
+
+  - id: stamp-interim
+    documentNo: 国务院令第11号
+    title: 中华人民共和国印花税暂行条例
+    issuer: 国务院
+    issuedAt: 1988-08-06
+    effectiveFrom: 1988-10-01
+    effectiveTo: 2022-06-30
+    lifecycle: superseded
+    level: central
+    taxCodes: [stamp]
+    summary: 印花税的原行政法规，2022年7月1日印花税法施行后废止。
+    keyPoints:
+      - 规定13个税目的税率或税额标准。
+      - 实行由纳税人自行计算、自行购买并粘贴印花税票的缴纳方式。
+      - 已由《中华人民共和国印花税法》取代。
+    tags: [印花税, 行政法规, 已废止]
+
+  - id: ann-2022-22
+    documentNo: 财政部 税务总局公告2022年第22号
+    title: 财政部 税务总局关于印花税若干事项政策执行口径的公告
+    issuer: 财政部 国家税务总局
+    issuedAt: 2022-06-27
+    effectiveFrom: 2022-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [stamp]
+    summary: 明确印花税法实施后的纳税人、计税依据、减免与退税等执行口径，是实务判断的直接依据。
+    keyPoints:
+      - 明确应税凭证的判定、境外书立在境内使用的处理规则。
+      - 同一应税凭证载有两个以上税目事项的，按各自适用税目税率分别计算。
+      - 规定多缴印花税的退还情形与办理程序。
+    tags: [印花税, 执行口径, 计税依据]
+
+  # ---------------------------------------------------------------------------
+  # 五、税收征管与发票
+  # ---------------------------------------------------------------------------
+  - id: tax-collection-law
+    documentNo: 中华人民共和国主席令第四十九号
+    title: 中华人民共和国税收征收管理法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2001-04-28
+    effectiveFrom: 2001-05-01
+    lifecycle: amended
+    level: central
+    taxCodes: []
+    summary: 税收征管的基本法律，规定税务登记、账簿凭证管理、申报纳税、税款征收与法律责任。
+    keyPoints:
+      - 纳税人应按规定设置账簿、保管凭证并按期申报纳税。
+      - 规定税务机关的税款征收、税收保全与强制执行措施。
+      - 明确偷税、抗税、骗税的法律责任，构成犯罪的依法追究刑事责任。
+    tags: [税收征管, 法律, 程序法]
+
+  - id: tax-collection-rules
+    documentNo: 国务院令第362号
+    title: 中华人民共和国税收征收管理法实施细则
+    issuer: 国务院
+    issuedAt: 2002-09-07
+    effectiveFrom: 2002-10-15
+    lifecycle: amended
+    level: central
+    taxCodes: []
+    summary: 税收征管法的实施细则，细化税务登记、账簿凭证、申报与税款征收的具体程序。
+    keyPoints:
+      - 明确从事生产、经营的纳税人办理税务登记与变更登记的时限。
+      - 规定账簿、记账凭证、报表等涉税资料的保存年限。
+      - 细化延期申报、延期缴纳税款的申请与审批程序。
+    tags: [税收征管, 行政法规, 程序]
+
+  - id: invoice-measures-2010
+    documentNo: 国务院令第587号
+    title: 中华人民共和国发票管理办法（2010年修订）
+    issuer: 国务院
+    issuedAt: 2010-12-20
+    effectiveFrom: 2011-02-01
+    effectiveTo: 2023-07-19
+    lifecycle: superseded
+    level: central
+    taxCodes: [vat]
+    summary: 2010年修订的发票管理办法，2023年由国务院令第764号修订版本取代。
+    keyPoints:
+      - 规定发票的印制、领购、开具、取得、保管与缴销。
+      - 明确不符合规定的发票不得作为财务报销凭证。
+      - 已由2023年修订版本取代。
+    tags: [发票, 行政法规, 已替代]
+
+  - id: invoice-measures
+    documentNo: 国务院令第764号
+    title: 中华人民共和国发票管理办法（2023年修订）
+    issuer: 国务院
+    issuedAt: 2023-07-20
+    effectiveFrom: 2023-07-20
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 2023年修订的发票管理办法，明确电子发票的法律效力与全流程管理要求。
+    keyPoints:
+      - 电子发票与纸质发票具有同等法律效力。
+      - 规定发票开具、取得、保管的基本要求，禁止虚开发票。
+      - 明确发票违法行为的处罚措施。
+    tags: [发票, 行政法规, 电子发票, 2023年修订]
+
+  - id: e-invoice-2024
+    documentNo: 国家税务总局公告2024年第11号
+    title: 国家税务总局关于推广应用全面数字化电子发票的公告
+    issuer: 国家税务总局
+    issuedAt: 2024-11-12
+    effectiveFrom: 2024-12-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    url: https://www.gov.cn/zhengce/zhengceku/202411/content_6989164.htm
+    summary: 明确自2024年12月1日起在全国推广应用全面数字化的电子发票（数电发票），并规定其法律效力与使用要求。
+    keyPoints:
+      - 数电发票是电子发票的一种，与纸质发票具有同等法律效力。
+      - 数电发票通过电子发票服务平台开具，实现发票全领域、全环节、全要素电子化。
+      - 受票方可以通过全国增值税发票查验平台查验数电发票。
+      - 系统接入时应以票面「发票号码」「开票日期」等要素作为唯一性判定依据。
+    tags: [数电发票, 电子发票, 发票管理, 2024年]
+
+  - id: gs-2017-16
+    documentNo: 国家税务总局公告2017年第16号
+    title: 国家税务总局关于增值税发票开具有关问题的公告
+    issuer: 国家税务总局
+    issuedAt: 2017-05-19
+    effectiveFrom: 2017-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vat]
+    summary: 规定购买方为企业时索取增值税普通发票应填写纳税人识别号，否则不得作为税收凭证。
+    keyPoints:
+      - 自2017年7月1日起，购买方为企业的，索取增值税普通发票时应提供纳税人识别号。
+      - 销售方开具发票时应如实填写购买方名称与纳税人识别号。
+      - 不符合规定的发票不得作为税收凭证用于办理涉税事项。
+    tags: [发票, 增值税, 纳税人识别号]
+
+  - id: caikuai-2020-6
+    documentNo: 财会〔2020〕6号
+    title: 财政部 国家档案局关于规范电子会计凭证报销入账归档的通知
+    issuer: 财政部 国家档案局
+    issuedAt: 2020-03-23
+    effectiveFrom: 2020-03-23
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 明确电子会计凭证的报销入账与归档要求，是数电票时代「无纸化记账」的合规依据。
+    keyPoints:
+      - 来源合法、真实的电子会计凭证与纸质会计凭证具有同等法律效力。
+      - 单位以电子会计凭证的纸质打印件入账归档的，应同时保存电子会计凭证原件。
+      - 电子会计凭证的归档应符合会计档案管理有关规定。
+    tags: [会计凭证, 电子发票, 归档, 会计档案]
+
+  # ---------------------------------------------------------------------------
+  # 六、会计法规与会计准则
+  # ---------------------------------------------------------------------------
+  - id: accounting-law-2024
+    documentNo: 中华人民共和国主席令第二十八号
+    title: 中华人民共和国会计法（2024年修正）
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2024-06-28
+    effectiveFrom: 2024-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 2024年修正的会计法，强化会计核算的真实完整要求与单位负责人责任，自2024年7月1日起施行。
+    keyPoints:
+      - 各单位必须依法设置会计账簿，保证会计资料真实、完整。
+      - 单位负责人对本单位的会计工作和会计资料的真实性、完整性负责。
+      - 明确伪造、变造会计凭证、会计账簿及编制虚假财务报告的法律责任。
+      - 自2024年7月1日起施行。
+    tags: [会计法, 法律, 2024年修正, 会计责任]
+
+  - id: accounting-law-2017
+    documentNo: 中华人民共和国主席令第八十一号
+    title: 中华人民共和国会计法（2017年修正）
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2017-11-04
+    effectiveFrom: 2017-11-05
+    effectiveTo: 2024-06-30
+    lifecycle: superseded
+    level: central
+    taxCodes: []
+    summary: 2017年修正的会计法，取消了会计从业资格认定，2024年修正后替代。
+    keyPoints:
+      - 取消会计从业资格证书要求，强化会计人员专业能力与职业道德要求。
+      - 规定会计核算、会计监督与法律责任的基本制度。
+      - 已由2024年修正版本取代。
+    tags: [会计法, 法律, 已替代]
+
+  - id: small-enterprise-standard
+    documentNo: 财会〔2011〕17号
+    title: 小企业会计准则
+    issuer: 财政部
+    issuedAt: 2011-10-18
+    effectiveFrom: 2013-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 面向符合《中小企业划型标准规定》小型企业的会计准则，采用历史成本、应付税款法等简化处理。
+    keyPoints:
+      - 不确认递延所得税，所得税采用应付税款法核算。
+      - 不计提资产减值准备，资产按成本计量。
+      - 研发支出全部费用化，不区分研究阶段与开发阶段。
+      - 经营租赁不确认使用权资产与租赁负债。
+    tags: [小企业会计准则, 会计准则, 简化核算]
+
+  - id: cas-basic
+    documentNo: 财政部令第33号
+    title: 企业会计准则——基本准则
+    issuer: 财政部
+    issuedAt: 2006-02-15
+    effectiveFrom: 2007-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: []
+    summary: 企业会计准则体系的基础，规定会计目标、会计假设、会计信息质量要求与会计要素确认计量原则。
+    keyPoints:
+      - 确立权责发生制、历史成本为主并允许公允价值计量的计量基础。
+      - 规定资产、负债、所有者权益、收入、费用、利润六要素的定义。
+      - 提出可靠性、相关性、可比性、实质重于形式等会计信息质量要求。
+    tags: [企业会计准则, 基本准则, 会计要素]
+
+  - id: cas-14-revenue
+    documentNo: 财会〔2017〕22号
+    title: 企业会计准则第14号——收入
+    issuer: 财政部
+    issuedAt: 2017-07-05
+    effectiveFrom: 2018-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 采用五步法模型确认收入，引入合同资产与合同负债概念，与增值税纳税义务发生时间常产生税会差异。
+    keyPoints:
+      - 按「识别合同—识别履约义务—确定交易价格—分摊交易价格—履行义务时确认收入」五步法确认收入。
+      - 设置合同资产、合同负债科目，替代预收账款在部分场景的使用。
+      - 收入确认时点可能与增值税纳税义务发生时间不一致，需做税会差异分析。
+    tags: [企业会计准则, 收入, 五步法, 合同负债]
+
+  - id: cas-21-lease
+    documentNo: 财会〔2018〕35号
+    title: 企业会计准则第21号——租赁
+    issuer: 财政部
+    issuedAt: 2018-12-07
+    effectiveFrom: 2021-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 承租人不再区分融资租赁与经营租赁，统一确认使用权资产与租赁负债，形成显著的税会差异。
+    keyPoints:
+      - 承租人除短期租赁和低价值资产租赁外，均应确认使用权资产与租赁负债。
+      - 租赁负债按租赁期开始日尚未支付的租赁付款额现值计量。
+      - 财税处理上经营租赁租金仍按租赁期均匀扣除，形成税会差异。
+    tags: [企业会计准则, 租赁, 使用权资产, 税会差异]
+
+  - id: accounting-basics
+    documentNo: 财会字〔1996〕19号
+    title: 会计基础工作规范
+    issuer: 财政部
+    issuedAt: 1996-06-17
+    effectiveFrom: 1996-06-17
+    lifecycle: amended
+    level: central
+    taxCodes: []
+    summary: 规定会计凭证、会计账簿、财务报告与会计档案的基本要求，是审核记账规范性的直接依据。
+    keyPoints:
+      - 规定原始凭证的填制、审核与更正要求，以及记账凭证的编制规范。
+      - 要求会计账簿按规定的格式与内容登记，并定期结账对账。
+      - 明确会计工作岗位设置与内部牵制的基本要求。
+    tags: [会计基础工作, 会计凭证, 账簿, 审核依据]
+
+  - id: accounting-archives
+    documentNo: 财政部 国家档案局令第79号
+    title: 会计档案管理办法
+    issuer: 财政部 国家档案局
+    issuedAt: 2015-12-11
+    effectiveFrom: 2016-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 规定会计档案的范围、保管期限、销毁程序与电子会计档案的管理要求。
+    keyPoints:
+      - 会计凭证、会计账簿、财务报告等保管期限分为10年与30年，年度财务报告永久保存。
+      - 会计档案销毁须经单位负责人批准，并履行监销程序。
+      - 满足条件的电子会计档案可仅以电子形式保存。
+    tags: [会计档案, 保管期限, 电子归档]
+
+  - id: financial-report-regulation
+    documentNo: 国务院令第287号
+    title: 企业财务会计报告条例
+    issuer: 国务院
+    issuedAt: 2000-06-21
+    effectiveFrom: 2001-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: []
+    summary: 规定企业财务会计报告的构成、编制、对外提供与法律责任，是报表编制的行政法规依据。
+    keyPoints:
+      - 财务会计报告由会计报表、会计报表附注和财务情况说明书组成。
+      - 企业应当于年度终了编制年度财务会计报告，并按规定期限对外提供。
+      - 明确编制虚假财务会计报告的法律责任。
+    tags: [财务报告, 行政法规, 报表编制]
+
+  # ---------------------------------------------------------------------------
+  # 七、其他税种
+  # ---------------------------------------------------------------------------
+  - id: consumption-interim
+    documentNo: 国务院令第539号
+    title: 中华人民共和国消费税暂行条例
+    issuer: 国务院
+    issuedAt: 2008-11-10
+    effectiveFrom: 2009-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [consumption]
+    summary: 消费税的基础行政法规，规定应税消费品范围、税率与计税方法。
+    keyPoints:
+      - 对生产、委托加工和进口应税消费品的单位和个人征收。
+      - 采用比例税率、定额税率或复合计税方式。
+      - 与增值税同环节征收，计税依据为销售额或销售数量。
+    tags: [消费税, 行政法规, 流转税]
+
+  - id: property-tax-interim
+    documentNo: 国发〔1986〕90号
+    title: 中华人民共和国房产税暂行条例
+    issuer: 国务院
+    issuedAt: 1986-09-15
+    effectiveFrom: 1986-10-01
+    lifecycle: effective
+    level: central
+    taxCodes: [property]
+    summary: 房产税的基础行政法规，规定从价计征与从租计征两种方式。
+    keyPoints:
+      - 从价计征按房产原值一次减除10%至30%后的余值、按1.2%的税率计算。
+      - 从租计征按租金收入的12%计算。
+      - 个人所有非营业用的房产免征房产税。
+    tags: [房产税, 行政法规, 从价计征]
+
+  - id: urban-land-use-interim
+    documentNo: 国务院令第483号
+    title: 中华人民共和国城镇土地使用税暂行条例
+    issuer: 国务院
+    issuedAt: 2006-12-31
+    effectiveFrom: 2007-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [urban_land]
+    summary: 城镇土地使用税的基础行政法规，按实际占用土地面积与单位税额分年计算、分期缴纳。
+    keyPoints:
+      - 在城市、县城、建制镇、工矿区范围内使用土地的单位和个人为纳税人。
+      - 以实际占用的土地面积为计税依据，按年计算、分期缴纳。
+      - 单位税额按城市规模分档确定，具体标准由省级人民政府规定。
+    tags: [城镇土地使用税, 行政法规, 土地]
+
+  - id: land-vat-interim
+    documentNo: 国务院令第138号
+    title: 中华人民共和国土地增值税暂行条例
+    issuer: 国务院
+    issuedAt: 1993-12-13
+    effectiveFrom: 1994-01-01
+    lifecycle: effective
+    level: central
+    taxCodes: [land_vat]
+    summary: 土地增值税的基础行政法规，对转让房地产的增值额实行四级超率累进税率。
+    keyPoints:
+      - 转让国有土地使用权、地上建筑物及其附着物并取得收入的单位和个人为纳税人。
+      - 实行30%、40%、50%、60%四级超率累进税率。
+      - 房地产开发企业一般实行预征加清算的征收方式。
+    tags: [土地增值税, 行政法规, 超率累进]
+
+  - id: land-vat-rules
+    documentNo: 财法字〔1995〕6号
+    title: 中华人民共和国土地增值税暂行条例实施细则
+    issuer: 财政部
+    issuedAt: 1995-01-27
+    effectiveFrom: 1995-01-27
+    lifecycle: effective
+    level: central
+    taxCodes: [land_vat]
+    summary: 土地增值税暂行条例的实施细则，明确扣除项目、增值额计算与预征清算的具体口径。
+    keyPoints:
+      - 细化取得土地使用权支付的金额、开发成本、开发费用等扣除项目。
+      - 规定从事房地产开发的纳税人可加计20%扣除。
+      - 明确免税情形与减免税审批要求。
+    tags: [土地增值税, 实施细则, 扣除项目]
+
+  - id: deed-law
+    documentNo: 中华人民共和国主席令第五十二号
+    title: 中华人民共和国契税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2020-08-11
+    effectiveFrom: 2021-09-01
+    lifecycle: effective
+    level: central
+    taxCodes: [deed]
+    url: http://www.npc.gov.cn/c2/c30834/202008/t20200811_307183.html
+    summary: 把契税暂行条例上升为法律，规定3%至5%的税率幅度与减免情形，自2021年9月1日起施行。
+    keyPoints:
+      - 在境内转移土地、房屋权属，承受的单位和个人为契税纳税人。
+      - 税率为3%至5%，具体适用税率由省级人民政府在规定幅度内提出。
+      - 婚姻关系存续期间夫妻之间变更土地、房屋权属等情形免征契税。
+    tags: [契税, 法律, 不动产]
+
+  - id: vehicle-vessel-law
+    documentNo: 中华人民共和国主席令第四十三号
+    title: 中华人民共和国车船税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2011-02-25
+    effectiveFrom: 2012-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [vehicle_vessel]
+    summary: 车船税的法律依据，按乘用车排气量、整备质量或艇身长度分档定额征收。
+    keyPoints:
+      - 在境内属于本法所附税目税额表的车辆、船舶的所有人或管理人为纳税人。
+      - 乘用车按发动机排气量分档确定年基准税额。
+      - 对节约能源、使用新能源的车船可以减征或免征。
+    tags: [车船税, 法律, 财产税]
+
+  - id: vehicle-purchase-law
+    documentNo: 中华人民共和国主席令第十九号
+    title: 中华人民共和国车辆购置税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2018-12-29
+    effectiveFrom: 2019-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [vehicle_purchase]
+    url: http://www.npc.gov.cn/npc/c1773/c1848/c21114/c35135/c35145/201905/t20190521_263267.html
+    summary: 车辆购置税的法律依据，税率10%，在车辆登记注册前一次性缴纳。
+    keyPoints:
+      - 在境内购置汽车、有轨电车、汽车挂车、排气量超过150毫升的摩托车为应税车辆。
+      - 税率为10%，计税价格为纳税人实际支付给销售者的全部价款（不含增值税）。
+      - 新能源汽车等按国家规定享受减免。
+    tags: [车辆购置税, 法律, 一次性征收]
+
+  - id: resource-law
+    documentNo: 中华人民共和国主席令第三十三号
+    title: 中华人民共和国资源税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2019-08-26
+    effectiveFrom: 2020-09-01
+    lifecycle: effective
+    level: central
+    taxCodes: [resource]
+    url: https://www.gov.cn/xinwen/2019-08/26/content_5424612.htm
+    summary: 资源税的法律依据，对开发应税资源的单位和个人按比例税率或定额税率征收。
+    keyPoints:
+      - 在境内开发应税资源的单位和个人为资源税纳税人。
+      - 实行比例税率与定额税率两种形式，具体税率见税目税率表。
+      - 规定部分情形免征或减征资源税。
+    tags: [资源税, 法律, 绿色税制]
+
+  - id: environmental-law
+    documentNo: 中华人民共和国主席令第六十一号
+    title: 中华人民共和国环境保护税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2016-12-25
+    effectiveFrom: 2018-01-01
+    lifecycle: amended
+    level: central
+    taxCodes: [environmental]
+    summary: 环境保护税的法律依据，对直接向环境排放应税污染物的企业事业单位征收。
+    keyPoints:
+      - 直接向环境排放应税污染物（大气、水、固体废物、噪声）的企事业单位为纳税人。
+      - 按污染当量数、排放量或超标分贝数确定计税依据。
+      - 依法设立的城乡污水集中处理、生活垃圾集中处理场所达标排放的暂予免征。
+    tags: [环境保护税, 法律, 绿色税制]
+
+  - id: urban-construction-law
+    documentNo: 中华人民共和国主席令第五十一号
+    title: 中华人民共和国城市维护建设税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2020-08-11
+    effectiveFrom: 2021-09-01
+    lifecycle: effective
+    level: central
+    taxCodes: [urban_construction]
+    url: https://www.gov.cn/xinwen/2020-08/11/content_5534200.htm
+    summary: 城市维护建设税的法律依据，以实际缴纳的增值税、消费税税额为计税依据，按地区分档适用7%、5%、1%的税率。
+    keyPoints:
+      - 以纳税人实际缴纳的增值税、消费税税额为计税依据。
+      - 市区适用7%，县城、镇适用5%，不在市区、县城或镇的适用1%。
+      - 与增值税、消费税同时申报缴纳，进口货物或境外单位向境内销售劳务不征。
+    tags: [城市维护建设税, 法律, 附加税]
+
+  - id: tariff-law
+    documentNo: 中华人民共和国主席令第二十三号
+    title: 中华人民共和国关税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2024-04-26
+    effectiveFrom: 2024-12-01
+    lifecycle: effective
+    level: central
+    taxCodes: [tariff]
+    url: https://www.gov.cn/yaowen/liebiao/202404/content_6947686.htm
+    summary: 关税领域的统领性法律，规定进出口关税的税目、税率、计税价格与征收管理，自2024年12月1日起施行。
+    keyPoints:
+      - 进口货物的收货人、出口货物的发货人为关税纳税人。
+      - 进口关税设置最惠国税率、协定税率、特惠税率、普通税率等。
+      - 完税价格以成交价格为基础确定，进口环节增值税、消费税由海关一并征收。
+      - 自2024年12月1日起施行。
+    tags: [关税, 法律, 进出口, 2024年施行]
+
+  - id: farmland-law
+    documentNo: 中华人民共和国主席令第十八号
+    title: 中华人民共和国耕地占用税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2018-12-29
+    effectiveFrom: 2019-09-01
+    lifecycle: effective
+    level: central
+    taxCodes: [farmland]
+    url: https://www.gov.cn/xinwen/2018-12/30/content_5353479.htm
+    summary: 耕地占用税的法律依据，对占用耕地建房或从事非农业建设的单位和个人按面积定额征收。
+    keyPoints:
+      - 在境内占用耕地建房或者从事非农业建设的单位和个人为纳税人。
+      - 以纳税人实际占用的耕地面积为计税依据，按规定的适用税额一次性征收。
+      - 占用基本农田的，适用税额应当在规定基础上提高。
+    tags: [耕地占用税, 法律, 土地]
+
+  - id: tobacco-law
+    documentNo: 中华人民共和国主席令第八十四号
+    title: 中华人民共和国烟叶税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2017-12-27
+    effectiveFrom: 2018-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [tobacco]
+    summary: 烟叶税的法律依据，对收购烟叶的单位按收购金额的20%征收。
+    keyPoints:
+      - 在境内收购烟叶的单位为烟叶税纳税人。
+      - 税率为20%，计税依据为纳税人收购烟叶实际支付的价款总额。
+      - 烟叶税由收购地税务机关征收。
+    tags: [烟叶税, 法律, 农业特产]
+
+  - id: tonnage-law
+    documentNo: 中华人民共和国主席令第八十五号
+    title: 中华人民共和国船舶吨税法
+    issuer: 全国人民代表大会常务委员会
+    issuedAt: 2017-12-27
+    effectiveFrom: 2018-07-01
+    lifecycle: effective
+    level: central
+    taxCodes: [tonnage]
+    summary: 船舶吨税的法律依据，对自境外港口进入境内港口的船舶按净吨位与执照期限征收。
+    keyPoints:
+      - 自中华人民共和国境外港口进入境内港口的船舶为吨税征税对象。
+      - 按船舶净吨位与吨税执照期限适用不同税额标准。
+      - 应纳税额以人民币计算，由海关负责征收。
+    tags: [船舶吨税, 法律, 海关代征]
+
+  # ---------------------------------------------------------------------------
+  # 八、地方政策（个人住房房产税试点）
+  # ---------------------------------------------------------------------------
+  - id: sh-property-pilot
+    documentNo: 沪府发〔2011〕3号
+    title: 上海市开展对部分个人住房征收房产税试点的暂行办法
+    issuer: 上海市人民政府
+    issuedAt: 2011-01-27
+    effectiveFrom: 2011-01-28
+    lifecycle: effective
+    level: local
+    region: "310000"
+    taxCodes: [property]
+    summary: 上海市对部分个人住房征收房产税试点的地方性规定，是全国个人住房房产税试点的两个样本之一。
+    keyPoints:
+      - 对本市居民家庭新购且属于第二套及以上的住房、非本市居民家庭新购住房征收房产税。
+      - 计税依据为住房市场交易价格的70%，适用税率暂定为0.6%，符合条件可减按0.4%。
+      - 本市居民家庭人均住房面积不超过60平方米的部分免税。
+      - 具体认定与征收口径以主管税务机关发布为准。
+    tags: [房产税, 地方政策, 上海, 个人住房试点]
+
+  - id: cq-property-pilot
+    documentNo: 渝府令〔2017〕311号
+    title: 重庆市人民政府关于修订《重庆市关于开展对部分个人住房征收房产税改革试点的暂行办法》和《重庆市个人住房房产税征收管理实施细则》的决定
+    issuer: 重庆市人民政府
+    issuedAt: 2017-01-17
+    effectiveFrom: 2017-01-17
+    lifecycle: effective
+    level: local
+    region: "500000"
+    taxCodes: [property]
+    summary: 重庆市个人住房房产税试点的地方性规定（2011年启动、2017年修订），与上海试点并行实施。
+    keyPoints:
+      - 对独栋商品住宅、个人新购的高档住房以及「三无」人员新购的第二套及以上住房征收。
+      - 税率按住房交易单价分档，一般为0.5%至1.2%。
+      - 计税依据为应税住房的成交价格或评估值。
+      - 2017年以渝府令〔2017〕311号修订，具体认定与征收口径以主管税务机关发布为准。
+    tags: [房产税, 地方政策, 重庆, 个人住房试点]

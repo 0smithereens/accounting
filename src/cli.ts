@@ -26,6 +26,8 @@ import { exportToExcel } from './export/voucher-excel.ts';
 import { readWorkbook } from './io/excel-reader.ts';
 import { readWord } from './io/word-reader.ts';
 import { summarizeVouchers } from './ledger/voucher.ts';
+import type { AccountingStandardId } from './core/contracts.ts';
+import { cmdClose, cmdVerify, parseStandard, describeStandards, AUDIT_DIR, cmdFiling, type FilingAction } from './app/commands.ts';
 
 const SUPPORTED_EXT = new Set(['.xlsx', '.xlsm', '.xls', '.csv', '.tsv', '.txt', '.docx', '.docm', '.doc']);
 
@@ -61,8 +63,22 @@ function localTimestamp(date = new Date()): string {
 /* ------------------------------------------------------------------ */
 
 interface CliOptions {
-  command: 'run' | 'check' | 'rules' | 'explain' | 'help';
+  command: 'run' | 'check' | 'rules' | 'explain' | 'help' | 'close' | 'verify' | 'standards' | 'filing';
   inputs: string[];
+  /** 申报动作（仅 filing 使用） */
+  filingAction: FilingAction | undefined;
+  /** 申报表 id（仅 filing 使用） */
+  filingId: string | undefined;
+  /** 操作人：所有需要人签署的动作都必填 */
+  actor: string;
+  /** 税务局受理回执号 */
+  receipt: string | undefined;
+  /** 实缴金额（元） */
+  paid: string | undefined;
+  /** 理由（退回/作废） */
+  reason: string | undefined;
+  /** 会计准则（仅 close 使用） */
+  standard: AccountingStandardId | undefined;
   out: string;
   kind: SourceKind | undefined;
   period: string | undefined;
@@ -76,6 +92,10 @@ const USAGE = `${c.bold('会计自动化记账系统')}
 
 用法：
   node src/cli.ts <文件或目录...> [选项]
+  node src/cli.ts close   --period YYYY-MM <文件或目录...>   # 完整月结
+  node src/cli.ts filing  list|pending|review|approve|export|file|reject|void [id] --actor <姓名>
+  node src/cli.ts verify  [审计库目录]                       # 校验哈希链
+  node src/cli.ts standards                                  # 列出两套会计准则
   node src/cli.ts check | rules | explain <文件>
 
 选项：
@@ -86,6 +106,11 @@ const USAGE = `${c.bold('会计自动化记账系统')}
   --no-dedup            关闭跨单据重复业务去重（默认开启，防止银行流水与工资表重复记账）
   --recursive, -r       输入为目录时递归查找子目录
   --quiet, -q           只输出最终结果，不显示逐文件进度
+  --standard, -s <准则>   cas（企业会计准则）| small（小企业会计准则）
+  --actor <姓名>         操作人：月结时作为制单人，申报动作时作为签署人（必填）
+  --receipt <回执号>     电子税务局受理回执号（filing file 必填）
+  --paid <金额>          实际缴款金额，单位元（filing file 用）
+  --reason <理由>        退回/作废的理由（必填）
   --help, -h            显示本帮助
 
 示例：
@@ -106,6 +131,11 @@ function parseCliArgs(argv: readonly string[]): CliOptions {
       period: { type: 'string', short: 'p' },
       'no-balance': { type: 'boolean' },
       'no-dedup': { type: 'boolean' },
+      standard: { type: 'string', short: 's' },
+      actor: { type: 'string' },
+      receipt: { type: 'string' },
+      paid: { type: 'string' },
+      reason: { type: 'string' },
       recursive: { type: 'boolean', short: 'r' },
       quiet: { type: 'boolean', short: 'q' },
       help: { type: 'boolean', short: 'h' },
@@ -117,7 +147,19 @@ function parseCliArgs(argv: readonly string[]): CliOptions {
   let command: CliOptions['command'] = 'run';
 
   const first = positionalsList[0];
-  if (first === 'check' || first === 'rules' || first === 'explain') {
+  let filingAction: FilingAction | undefined;
+  let filingId: string | undefined;
+  if (first === 'filing') {
+    command = 'filing';
+    positionalsList.shift();
+    const action = positionalsList.shift();
+    const valid: FilingAction[] = ['list', 'pending', 'review', 'approve', 'export', 'file', 'reject', 'void'];
+    if (action === undefined || !valid.includes(action as FilingAction)) {
+      throw new Error('filing 的动作必须是 ' + valid.join(' | ') + '，实际为「' + String(action) + '」');
+    }
+    filingAction = action as FilingAction;
+    filingId = positionalsList.shift();
+  } else if (first === 'check' || first === 'rules' || first === 'explain' || first === 'close' || first === 'verify' || first === 'standards') {
     command = first;
     positionalsList.shift();
   } else if (first === 'help') {
@@ -144,6 +186,13 @@ function parseCliArgs(argv: readonly string[]): CliOptions {
   const options: CliOptions = {
     command,
     inputs: positionalsList,
+    filingAction,
+    filingId,
+    actor: values.actor ?? '',
+    receipt: values.receipt,
+    paid: values.paid,
+    reason: values.reason,
+    standard: parseStandard(values.standard),
     out: values.out ?? '',
     kind,
     period,
@@ -531,6 +580,56 @@ async function main(): Promise<void> {
       return;
     case 'rules':
       process.exitCode = cmdRules();
+      return;
+    case 'standards':
+      console.log('可用会计准则：');
+      console.log(describeStandards());
+      console.log('');
+      console.log('在 config/settings.yaml 的 accountingStandard 里切换，或用 --standard 临时覆盖。');
+      return;
+    case 'verify':
+      process.exitCode = await cmdVerify(options.inputs[0] ?? AUDIT_DIR);
+      return;
+    case 'filing': {
+      const action = options.filingAction;
+      if (action === undefined) {
+        console.error(c.red('用法：node src/cli.ts filing <list|pending|review|approve|export|file|reject|void> [id] --actor <姓名>'));
+        process.exitCode = 1;
+        return;
+      }
+      const needsActor = action !== 'list' && action !== 'pending';
+      if (needsActor && options.actor.trim() === '') {
+        console.error(c.red('✗ 这一步必须由人签署，请用 --actor <姓名或工号> 指定操作人'));
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = await cmdFiling({
+        action,
+        id: options.filingId,
+        period: options.period,
+        actor: options.actor,
+        out: options.out,
+        receipt: options.receipt,
+        paidYuan: options.paid,
+        reason: options.reason,
+      });
+      return;
+    }
+    case 'close':
+      if (options.period === undefined) {
+        console.error(c.red('用法：node src/cli.ts close --period YYYY-MM <单据文件或目录...>'));
+        process.exitCode = 1;
+        return;
+      }
+      process.exitCode = await cmdClose({
+        inputs: await collectInputs(options.inputs, options.recursive),
+        period: options.period,
+        out: options.out,
+        standard: options.standard,
+        quiet: options.quiet,
+        // 月结是「制单」动作，操作人必须落到申报表的制单人栏
+        preparer: options.actor.trim() === '' ? undefined : options.actor.trim(),
+      });
       return;
     case 'explain': {
       const file = options.inputs[0];
