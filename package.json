@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --test-isolation=none \"tests/*.test.ts\"",
+    "test": "node --test \"tests/*.test.ts\"",
     "samples": "node tools/make-samples.ts",
     "cli": "node src/cli.ts",
     "web": "node src/web/server.ts",
