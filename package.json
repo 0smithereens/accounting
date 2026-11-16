@@ -1,6 +1,6 @@
 {
   "name": "accounting-automation",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "会计自动化记账系统：识别 Excel/Word 单据，通过规则引擎生成标准借贷会计分录并导出凭证",
@@ -13,7 +13,10 @@
     "samples": "node tools/make-samples.ts",
     "cli": "node src/cli.ts",
     "web": "node src/web/server.ts",
-    "check": "node src/cli.ts check"
+    "check": "node src/cli.ts check",
+    "close": "node src/cli.ts close",
+    "verify": "node src/cli.ts verify",
+    "audit": "node src/cli.ts verify"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

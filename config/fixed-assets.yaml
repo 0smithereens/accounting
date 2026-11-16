@@ -1,0 +1,64 @@
+# =============================================================================
+# 固定资产与摊销台账
+# =============================================================================
+# 月结时按这里的台账自动计提折旧、摊销。金额单位一律「元」，系统内部换算成分。
+#
+# 折旧规则（企业所得税法实施条例第六十条最低年限，会计上可自行判断）：
+#   房屋建筑物 20 年 / 飞机火车轮船机器机械 10 年 / 与生产经营活动有关的器具工具家具 5 年
+#   飞机火车轮船以外的运输工具 4 年 / 电子设备 3 年
+# 会计上采用直线法，净残值率一般 5%。当月增加的固定资产，次月起计提折旧。
+# =============================================================================
+
+assets:
+  - id: FA-001
+    name: 数控加工中心
+    originalCost: 1200000          # 原值 120 万元
+    usefulLifeMonths: 120          # 10 年
+    salvageRate: 0.05              # 净残值率 5%
+    startPeriod: "2024-01"         # 开始计提的期间
+    department: 生产部
+    assetAccount: "1601.02"        # 固定资产-机器设备
+    depreciationAccount: "1602"    # 累计折旧
+    expenseAccount: "6602.09"      # 管理费用-折旧费（生产设备应走 5101 制造费用，按实际调整）
+
+  - id: FA-002
+    name: 商务用车
+    originalCost: 300000
+    usefulLifeMonths: 48           # 4 年
+    salvageRate: 0.05
+    startPeriod: "2024-03"
+    department: 总经办
+    assetAccount: "1601.03"        # 固定资产-运输工具
+    depreciationAccount: "1602"
+    expenseAccount: "6602.09"
+
+  - id: FA-003
+    name: 办公电脑（批量）
+    originalCost: 96000
+    usefulLifeMonths: 36           # 3 年
+    salvageRate: 0.03
+    startPeriod: "2024-06"
+    department: 技术部
+    assetAccount: "1601.04"        # 固定资产-电子设备
+    depreciationAccount: "1602"
+    expenseAccount: "6602.09"
+
+# 摊销台账：长期待摊费用、无形资产。无残值。
+amortization:
+  - id: AM-001
+    name: 办公室装修改造
+    originalCost: 600000
+    months: 36                     # 3 年
+    startPeriod: "2024-01"
+    assetAccount: "1801.01"        # 长期待摊费用-经营租赁固定资产改良支出
+    expenseAccount: "6602.17"      # 管理费用-其他（摊销费无专用明细，按企业实际调整）
+    department: 行政部
+
+  - id: AM-002
+    name: 财务软件使用权
+    originalCost: 48000
+    months: 24
+    startPeriod: "2024-02"
+    assetAccount: "1701.01"        # 无形资产-软件
+    expenseAccount: "6602.17"
+    department: 财务部

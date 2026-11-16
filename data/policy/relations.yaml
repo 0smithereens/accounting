@@ -1,0 +1,550 @@
+# =============================================================================
+# 政策关系图谱（data/policy/relations.yaml）——「变化轨迹 · 关联图谱」
+#
+# 边方向语义（重要，loader 与 graph.ts 都依赖这个约定）：
+#   from 是「动作发出方」，to 是「动作承受方」。
+#     amends      from 修改了 to          （例：国发〔2023〕13号 修改 国发〔2018〕41号）
+#     supersedes  from 替代了 to          （例：2023年第7号 替代 财税〔2018〕99号）
+#     repeals     from 废止了 to          （例：增值税法 废止 增值税暂行条例）
+#     based_on    from 的制定依据是 to     （例：2023年第7号 依据 企业所得税法）
+#     implements  from 是对 to 的贯彻落实  （例：税务总局2019年第14号 贯彻 2019年第39号）
+#     parallel    from 与 to 关联平行      （无方向语义，取任一端均可）
+#
+# 所有 from / to 必须是 policies.yaml 中真实存在的 id；
+# buildGraph 会做严格校验，出现悬空 id 直接抛 PolicyGraphError（不允许静默丢边）。
+#
+# 说明：本文件只记录「有公开文本支持」的关系。推断性关系一律用 parallel，
+#       并在 note 中写明「关联」而不是「依据」，避免误导使用者。
+# =============================================================================
+
+version: 1
+updatedAt: 2026-11-01
+
+relations:
+  # ---------------------------------------------------------------------------
+  # 废止（repeals）
+  # ---------------------------------------------------------------------------
+  - id: rel-001
+    from: vat-law-2024
+    to: vat-interim-regulation
+    type: repeals
+    note: 增值税法第三十八条明确：本法自2026年1月1日起施行，《中华人民共和国增值税暂行条例》同时废止。
+
+  - id: rel-002
+    from: stamp-law
+    to: stamp-interim
+    type: repeals
+    note: 印花税法自2022年7月1日起施行，1988年发布的印花税暂行条例同时废止。
+
+  # ---------------------------------------------------------------------------
+  # 替代（supersedes）
+  # ---------------------------------------------------------------------------
+  - id: rel-003
+    from: ann-2023-19
+    to: ann-2023-1
+    type: supersedes
+    note: 2023年第19号把小规模纳税人减免政策延续至2027年底，接续并替代执行期届满的2023年第1号。
+
+  - id: rel-004
+    from: ann-2023-7
+    to: caishui-2018-99
+    type: supersedes
+    note: 研发费用加计扣除比例由75%（财税〔2018〕99号）提高到100%（2023年第7号），执行期衔接。
+
+  - id: rel-005
+    from: ann-2023-7
+    to: ann-2021-13
+    type: supersedes
+    note: 100%加计扣除的适用范围由制造业企业扩大到除负面清单行业外的符合条件企业。
+
+  - id: rel-006
+    from: ann-2023-12
+    to: ann-2023-6
+    type: supersedes
+    note: 小型微利企业所得税优惠口径由2023年第6号延续至2027年12月31日（2023年第12号第三条）。
+
+  - id: rel-007
+    from: invoice-measures
+    to: invoice-measures-2010
+    type: supersedes
+    note: 2023年国务院令第764号修订版本取代2010年国务院令第587号修订版本。
+
+  - id: rel-008
+    from: vat-law-2024
+    to: caishui-2016-36
+    type: supersedes
+    note: 增值税法把营改增试点确立的制度上升为法律，36号文相应条款自2026年起不再作为独立依据（清理文件以官方发布为准）。
+
+  # ---------------------------------------------------------------------------
+  # 修改（amends）
+  # ---------------------------------------------------------------------------
+  - id: rel-009
+    from: accounting-law-2024
+    to: accounting-law-2017
+    type: amends
+    note: 2024年6月28日全国人大常委会通过修改决定，对2017年修正版本作第二次修正，2024年7月1日施行。
+
+  - id: rel-010
+    from: guofa-2023-13
+    to: guofa-2018-41
+    type: amends
+    note: 提高3岁以下婴幼儿照护、子女教育、赡养老人三项专项附加扣除标准，其余扣除项目继续按暂行办法执行。
+
+  - id: rel-011
+    from: guofa-2022-8
+    to: guofa-2018-41
+    type: amends
+    note: 在暂行办法六项扣除基础上增设「3岁以下婴幼儿照护」专项附加扣除。
+
+  - id: rel-012
+    from: ann-2019-39
+    to: caishui-2016-36
+    type: amends
+    note: 调整营改增后的税率结构（16%→13%、10%→9%），并扩大进项抵扣范围、引入加计抵减。
+
+  - id: rel-013
+    from: ann-2023-43
+    to: ann-2019-39
+    type: amends
+    note: 将2019年第39号确立的加计抵减政策延续并聚焦到先进制造业企业，按5%计提。
+
+  - id: rel-014
+    from: ann-2022-14
+    to: ann-2019-39
+    type: amends
+    note: 在2019年试行留抵退税的基础上，扩大范围、放宽条件并提高退还比例。
+
+  - id: rel-015
+    from: ann-2023-37
+    to: caishui-2014-75
+    type: amends
+    note: 设备器具一次性扣除的单位价值标准与执行期限按新公告执行，加速折旧方法仍按财税〔2014〕75号等规定。
+
+  # ---------------------------------------------------------------------------
+  # 制定依据（based_on）
+  # ---------------------------------------------------------------------------
+  - id: rel-016
+    from: ann-2023-19
+    to: vat-interim-regulation
+    type: based_on
+    note: 小规模纳税人减免政策依据增值税暂行条例关于起征点与征收率的规定制定。
+
+  - id: rel-017
+    from: ann-2023-1
+    to: vat-interim-regulation
+    type: based_on
+    note: 同上，2023年第1号为该减免政策的当年度执行文件。
+
+  - id: rel-018
+    from: ann-2019-39
+    to: vat-interim-regulation
+    type: based_on
+    note: 深化增值税改革在暂行条例框架内调整税率与抵扣规则。
+
+  - id: rel-019
+    from: ann-2023-6
+    to: cit-law
+    type: based_on
+    note: 小型微利企业优惠依据企业所得税法第二十八条及实施条例第九十二条制定。
+
+  - id: rel-020
+    from: ann-2023-12
+    to: cit-law
+    type: based_on
+    note: 小型微利企业所得税优惠延续部分依据企业所得税法制定。
+
+  - id: rel-021
+    from: ann-2023-12
+    to: vat-interim-regulation
+    type: based_on
+    note: 「六税两费」减半中的城建税、教育费附加以增值税、消费税实际缴纳税额为计税依据。
+
+  - id: rel-022
+    from: ann-2023-7
+    to: cit-law
+    type: based_on
+    note: 研发费用加计扣除依据企业所得税法第三十条及实施条例第九十五条制定。
+
+  - id: rel-023
+    from: ann-2023-37
+    to: cit-law
+    type: based_on
+    note: 设备器具一次性扣除属于企业所得税法及实施条例授权范围内的税收优惠。
+
+  - id: rel-024
+    from: caishui-2018-99
+    to: cit-law
+    type: based_on
+    note: 提高研发费用加计扣除比例依据企业所得税法第三十条制定。
+
+  - id: rel-025
+    from: ann-2021-13
+    to: cit-law
+    type: based_on
+    note: 制造业研发费用100%加计扣除依据企业所得税法及实施条例制定。
+
+  - id: rel-026
+    from: caishui-2009-59
+    to: cit-law
+    type: based_on
+    note: 企业重组所得税处理依据企业所得税法第二十条及实施条例第七十五条制定。
+
+  - id: rel-027
+    from: caishui-2014-75
+    to: cit-law
+    type: based_on
+    note: 固定资产加速折旧依据企业所得税法第三十二条及实施条例第九十八条制定。
+
+  - id: rel-028
+    from: gs-2018-28
+    to: cit-law
+    type: based_on
+    note: 税前扣除凭证管理依据企业所得税法第八条关于实际发生与合理性原则制定。
+
+  - id: rel-029
+    from: gs-2018-28
+    to: cit-regulation
+    type: based_on
+    note: 扣除凭证的具体要求与实施条例关于成本费用扣除的规定相衔接。
+
+  - id: rel-030
+    from: gs-2016-42
+    to: cit-law
+    type: based_on
+    note: 关联申报与同期资料管理依据企业所得税法第六章特别纳税调整制定。
+
+  - id: rel-031
+    from: ann-2023-44
+    to: cit-law
+    type: based_on
+    note: 集成电路和工业母机企业120%加计扣除依据企业所得税法第三十条制定。
+
+  - id: rel-032
+    from: gs-2018-61
+    to: iit-law
+    type: based_on
+    note: 累计预扣法依据个人所得税法第十一条关于居民个人综合所得预扣预缴的规定制定。
+
+  - id: rel-033
+    from: guofa-2018-41
+    to: iit-law
+    type: based_on
+    note: 专项附加扣除的具体范围与标准由国务院依据个人所得税法第六条制定。
+
+  - id: rel-034
+    from: guofa-2022-8
+    to: iit-law
+    type: based_on
+    note: 新增婴幼儿照护扣除依据个人所得税法第六条授权由国务院规定。
+
+  - id: rel-035
+    from: guofa-2023-13
+    to: iit-law
+    type: based_on
+    note: 提高扣除标准依据个人所得税法第六条授权由国务院规定。
+
+  - id: rel-036
+    from: ann-2023-30
+    to: iit-law
+    type: based_on
+    note: 全年一次性奖金单独计税依据个人所得税法关于计税方式的规定由财政部、税务总局明确。
+
+  - id: rel-038
+    from: caishui-2012-39
+    to: vat-interim-regulation
+    type: based_on
+    note: 出口货物劳务退免税依据增值税暂行条例关于出口货物适用零税率的规定制定。
+
+  - id: rel-041
+    from: invoice-measures-2010
+    to: tax-collection-law
+    type: based_on
+    note: 发票管理办法依据税收征收管理法关于账簿凭证管理的规定制定。
+
+  - id: rel-042
+    from: invoice-measures
+    to: tax-collection-law
+    type: based_on
+    note: 2023年修订版仍以税收征收管理法为上位依据，并衔接电子发票改革要求。
+
+  - id: rel-045
+    from: small-enterprise-standard
+    to: accounting-law-2017
+    type: based_on
+    note: 小企业会计准则依据《会计法》制定（制定时适用的是当时的会计法版本）。
+
+  - id: rel-046
+    from: cas-basic
+    to: accounting-law-2017
+    type: based_on
+    note: 基本准则依据《会计法》制定，是具体准则的上位规范。
+
+  - id: rel-047
+    from: cas-14-revenue
+    to: cas-basic
+    type: based_on
+    note: 具体准则依据基本准则规定的确认计量原则制定。
+
+  - id: rel-048
+    from: cas-21-lease
+    to: cas-basic
+    type: based_on
+    note: 同上，租赁准则的确认计量原则源自基本准则。
+
+  - id: rel-049
+    from: accounting-basics
+    to: accounting-law-2017
+    type: based_on
+    note: 会计基础工作规范依据《会计法》关于会计核算与会计监督的规定制定。
+
+  - id: rel-050
+    from: accounting-archives
+    to: accounting-law-2017
+    type: based_on
+    note: 会计档案管理办法依据《会计法》与《档案法》制定。
+
+  - id: rel-051
+    from: financial-report-regulation
+    to: accounting-law-2017
+    type: based_on
+    note: 企业财务会计报告条例依据《会计法》制定，规范报表编制与对外提供。
+
+  - id: rel-052
+    from: caikuai-2020-6
+    to: accounting-law-2017
+    type: based_on
+    note: 电子会计凭证入账归档要求依据《会计法》与会计档案管理规定制定。
+
+  - id: rel-053
+    from: sh-property-pilot
+    to: property-tax-interim
+    type: based_on
+    note: 上海个人住房房产税试点在房产税暂行条例框架内由地方政府制定具体办法。
+
+  - id: rel-054
+    from: cq-property-pilot
+    to: property-tax-interim
+    type: based_on
+    note: 重庆个人住房房产税试点同属房产税暂行条例框架下的地方试点。
+
+  - id: rel-055
+    from: caishui-2012-39
+    to: consumption-interim
+    type: based_on
+    note: 出口应税消费品退（免）消费税依据消费税暂行条例制定。
+
+  # ---------------------------------------------------------------------------
+  # 贯彻落实（implements）
+  # ---------------------------------------------------------------------------
+  - id: rel-056
+    from: gs-2019-14
+    to: ann-2019-39
+    type: implements
+    note: 税务总局就深化增值税改革的申报表调整、发票衔接等征管事项作出配套规定。
+
+  - id: rel-057
+    from: cit-regulation
+    to: cit-law
+    type: implements
+    note: 实施条例把企业所得税法的原则性规定落到具体扣除标准与优惠条件。
+
+  - id: rel-058
+    from: iit-regulation
+    to: iit-law
+    type: implements
+    note: 实施条例细化居民个人判定、所得来源地与各项所得的计算口径。
+
+  - id: rel-059
+    from: gs-2018-61
+    to: iit-regulation
+    type: implements
+    note: 征管衔接公告落实新个人所得税法及实施条例的预扣预缴操作要求。
+
+  - id: rel-060
+    from: e-invoice-2024
+    to: invoice-measures
+    type: implements
+    note: 数电发票推广是发票管理办法2023年修订后电子发票制度的具体落地。
+
+  - id: rel-061
+    from: gs-2017-16
+    to: invoice-measures-2010
+    type: implements
+    note: 纳税人识别号填写要求是发票管理办法在增值税普通发票上的具体执行口径。
+
+  - id: rel-062
+    from: ann-2022-22
+    to: stamp-law
+    type: implements
+    note: 执行口径公告是把印花税法条文落到征管操作层面的配套文件。
+
+  - id: rel-063
+    from: land-vat-rules
+    to: land-vat-interim
+    type: implements
+    note: 实施细则落实暂行条例关于扣除项目与四级超率累进税率的规定。
+
+  - id: rel-064
+    from: tax-collection-rules
+    to: tax-collection-law
+    type: implements
+    note: 实施细则把征管法关于登记、申报、征收的程序性规定具体化。
+
+  # ---------------------------------------------------------------------------
+  # 关联平行（parallel）
+  # ---------------------------------------------------------------------------
+  - id: rel-065
+    from: ann-2023-19
+    to: ann-2023-12
+    type: parallel
+    note: 两项政策同属2023年支持小微企业与个体工商户的税费优惠组合，常需同时判断适用性。
+
+  - id: rel-066
+    from: ann-2023-7
+    to: ann-2023-44
+    type: parallel
+    note: 一般企业研发加计100%，集成电路与工业母机企业加计120%，属同一优惠事项的不同档位。
+
+  - id: rel-067
+    from: ann-2023-43
+    to: ann-2023-44
+    type: parallel
+    note: 前者为增值税加计抵减，后者为企业所得税研发加计，同为支持先进制造业的政策工具。
+
+  - id: rel-068
+    from: cas-14-revenue
+    to: small-enterprise-standard
+    type: parallel
+    note: 两套准则的收入确认口径不同（五步法 vs 简化确认），切换准则时必须整体切换。
+
+  - id: rel-069
+    from: cas-21-lease
+    to: small-enterprise-standard
+    type: parallel
+    note: 企业会计准则要求承租人确认使用权资产，小企业会计准则下经营租赁不资本化。
+
+  - id: rel-070
+    from: cas-basic
+    to: small-enterprise-standard
+    type: parallel
+    note: 企业会计准则体系与小企业会计准则体系并行，适用范围互斥。
+
+  - id: rel-071
+    from: cas-14-revenue
+    to: cas-21-lease
+    type: parallel
+    note: 收入准则与租赁准则同属2017年后修订的新准则体系，衔接影响使用权资产与收入确认。
+
+  - id: rel-072
+    from: land-vat-interim
+    to: deed-law
+    type: parallel
+    note: 房地产转让环节同时涉及土地增值税与契税，纳税义务人与计税依据不同。
+
+  - id: rel-073
+    from: land-vat-interim
+    to: stamp-law
+    type: parallel
+    note: 产权转移书据既涉及印花税，也可能涉及土地增值税。
+
+  - id: rel-074
+    from: consumption-interim
+    to: vat-interim-regulation
+    type: parallel
+    note: 消费税与增值税同环节征收，消费税计税依据为不含增值税销售额。
+
+  - id: rel-075
+    from: tariff-law
+    to: vat-law-2024
+    type: parallel
+    note: 进口环节由海关一并征收关税、进口环节增值税与消费税，三者计税价格相互关联。
+
+  - id: rel-076
+    from: vehicle-purchase-law
+    to: consumption-interim
+    type: parallel
+    note: 超豪华小汽车零售环节同时涉及消费税与车辆购置税，计税价格口径不同。
+
+  - id: rel-077
+    from: tobacco-law
+    to: consumption-interim
+    type: parallel
+    note: 烟叶税由收购方缴纳，烟叶作为消费税应税消费品的原料，二者在卷烟成本中叠加。
+
+  - id: rel-078
+    from: tonnage-law
+    to: tariff-law
+    type: parallel
+    note: 船舶吨税与关税同由海关征收，国际航行船舶进境时一并处理。
+
+  - id: rel-079
+    from: environmental-law
+    to: resource-law
+    type: parallel
+    note: 环境保护税与资源税同属绿色税制，征收对象与计税依据不同。
+
+  - id: rel-080
+    from: farmland-law
+    to: urban-land-use-interim
+    type: parallel
+    note: 耕地占用税与城镇土地使用税都与土地占用相关，前者为一次性征收、后者为按年征收。
+
+  - id: rel-081
+    from: sh-property-pilot
+    to: cq-property-pilot
+    type: parallel
+    note: 两地试点口径不同（上海按人均面积免税、重庆按独栋与高档住房分档），跨地区经营时需分别判断。
+
+  - id: rel-082
+    from: property-tax-interim
+    to: urban-land-use-interim
+    type: parallel
+    note: 房产与土地分别课征房产税与城镇土地使用税，自用与出租的计税方式不同。
+
+  - id: rel-083
+    from: tax-collection-law
+    to: invoice-measures
+    type: parallel
+    note: 征管法规定账簿凭证管理的基本原则，发票管理办法是其在上位法下的具体制度。
+
+  - id: rel-084
+    from: ann-2023-37
+    to: caishui-2014-75
+    type: parallel
+    note: 一次性扣除与加速折旧是两项可选择的税务处理方式，不可重复享受。
+
+  - id: rel-085
+    from: caikuai-2020-6
+    to: e-invoice-2024
+    type: parallel
+    note: 数电发票推广后，电子会计凭证的入账归档必须同时满足财会〔2020〕6号的要求。
+
+  - id: rel-086
+    from: vehicle-vessel-law
+    to: vehicle-purchase-law
+    type: parallel
+    note: 车辆购置税在购置环节一次性缴纳，车船税在持有环节按年缴纳。
+
+  - id: rel-087
+    from: accounting-basics
+    to: accounting-archives
+    type: parallel
+    note: 会计基础工作规范管「怎么记」，会计档案管理办法管「怎么存」，二者共同构成记账合规底线。
+
+  - id: rel-088
+    from: ann-2023-30
+    to: guofa-2023-13
+    type: parallel
+    note: 同属2023年个人所得税减负措施，前者针对年终奖计税方式，后者提高专项附加扣除标准。
+
+  - id: rel-089
+    from: urban-construction-law
+    to: vat-law-2024
+    type: parallel
+    note: 城市维护建设税以实际缴纳的增值税、消费税税额为计税依据，随主税同时申报。
+
+  - id: rel-090
+    from: resource-law
+    to: consumption-interim
+    type: parallel
+    note: 资源税与消费税在部分应税资源（如成品油、煤炭）上存在征收环节衔接。

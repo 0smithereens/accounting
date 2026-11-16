@@ -1,0 +1,1360 @@
+# =============================================================================
+# 业务事项 → 税种 → 申报表栏次 → 税会差异 → 关联政策（data/policy/business-events.yaml）
+#
+# 「税会智链」解决的问题：会计人员拿到一笔业务，通常要同时回答四个问题——
+#   1. 这笔业务涉及哪些税？
+#   2. 每个税种在申报表上填哪一栏？
+#   3. 会计处理和税务处理哪里不一致（税会差异）？
+#   4. 依据是哪几份文件？
+# 本文件把答案固化下来，再由 tax-chain.ts 组装成可点击的链路。
+#
+# 约定：
+#   taxTypes     只用契约 TaxType 的 9 个税种（契税、关税等不在计税引擎范围内，
+#                通过 policyIds 关联到对应税法，体现在差异说明里）
+#   returnLines  lineCode 写「官方表格上的栏次/行次编号」，lineLabel 写栏次名称；
+#                各版申报表栏次可能调整，正式填报前须核对当年最新表样
+#   differences  每条差异必须有 policyIds，否则就是没有依据的个人观点
+#   policyIds    事项级关联政策，与差异级 policyIds 合并后构成完整依据链
+#
+# 再次强调：本文件只描述「口径与勾稽关系」，不构成纳税申报意见；
+#           任何申报都应由人工复核并在电子税务局由人工完成提交。
+# =============================================================================
+
+version: 1
+updatedAt: 2026-11-01
+
+events:
+  # ===========================================================================
+  # 一、薪酬与人力
+  # ===========================================================================
+  - id: evt-salary-payment
+    name: 工资薪金发放
+    group: 薪酬与人力
+    taxTypes: [iit, cit]
+    differences:
+      - code: diff-salary-timing
+        label: 工资计提与个税扣缴的期间差异
+        description: 会计按权责发生制在当月计提工资，个人所得税按实际发放月份计算扣缴；企业所得税要求汇算清缴结束前实际支付方可扣除。
+        policyIds: [iit-law, gs-2018-61, cit-regulation]
+      - code: diff-welfare-cap
+        label: 职工福利费扣除限额
+        description: 职工福利费支出不超过工资薪金总额14%的部分准予扣除，超支部分需纳税调增。
+        policyIds: [cit-regulation]
+      - code: diff-special-deduction
+        label: 专项附加扣除的采集与扣缴
+        description: 专项附加扣除由纳税人自行判断并报送扣缴义务人，扣缴义务人按收到的信息在预扣预缴时扣除；未及时报送的可在年度汇算时补充扣除，多缴税款予以退还。
+        policyIds: [guofa-2018-41, guofa-2022-8, guofa-2023-13, iit-law]
+    returnLines:
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105050
+        lineLabel: 职工薪酬支出及纳税调整明细表
+    accountingGuide:
+      - 计提：借 管理费用/销售费用/生产成本—工资薪金，贷 应付职工薪酬—工资
+      - 发放：借 应付职工薪酬—工资，贷 银行存款、应交税费—应交个人所得税、其他应付款—社保公积金
+      - 缴纳：借 应交税费—应交个人所得税，贷 银行存款
+      - 注意：工资表人数、金额应与个税扣缴申报表、社保缴费基数三者可勾稽
+    policyIds: [iit-law, gs-2018-61, cit-law, cit-regulation]
+
+  - id: evt-year-end-bonus
+    name: 年终奖发放
+    group: 薪酬与人力
+    taxTypes: [iit, cit]
+    differences:
+      - code: diff-bonus-method
+        label: 全年一次性奖金单独计税与并入综合所得的选择
+        description: 选择单独计税时按奖金除以12个月确定税率，一个纳税年度只能使用一次；并入综合所得则随年度汇算统一计算，两种方式税负可能不同，需要测算后由人工选择。
+        policyIds: [ann-2023-30, iit-law]
+      - code: diff-bonus-accrual
+        label: 年终奖计提年度与发放年度
+        description: 会计在所属年度计提，企业所得税在汇算清缴前实际发放方可扣除，跨年发放需做纳税调整。
+        policyIds: [cit-regulation]
+    returnLines:
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得（含全年一次性奖金单独计税）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105050
+        lineLabel: 职工薪酬支出及纳税调整明细表
+    accountingGuide:
+      - 计提：借 管理费用—工资薪金，贷 应付职工薪酬—年终奖
+      - 发放：借 应付职工薪酬—年终奖，贷 银行存款、应交税费—应交个人所得税
+      - 单独计税与并入综合所得的测算结果应留档，作为计税方式选择的依据
+    policyIds: [ann-2023-30, iit-law, gs-2018-61, cit-regulation]
+
+  - id: evt-social-insurance
+    name: 社保与公积金缴纳
+    group: 薪酬与人力
+    taxTypes: [cit, iit]
+    differences:
+      - code: diff-si-limits
+        label: 社保与公积金的扣除限额
+        description: 企业按规定为职工缴纳的基本社会保险费和住房公积金准予扣除；补充养老保险、补充医疗保险分别在不超过工资薪金总额5%的部分内扣除。
+        policyIds: [cit-regulation]
+      - code: diff-si-personal
+        label: 个人负担部分的个税处理
+        description: 个人按规定负担的社保和公积金在计算工资薪金个税时可据实扣除，超过规定比例的部分不得扣除。
+        policyIds: [iit-law, iit-regulation]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105050
+        lineLabel: 职工薪酬支出及纳税调整明细表
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得（专项扣除栏）
+    accountingGuide:
+      - 计提单位部分：借 管理费用—社会保险费，贷 应付职工薪酬—社会保险费
+      - 代扣个人部分：借 应付职工薪酬—工资，贷 其他应付款—代扣社保公积金
+      - 缴纳：借 应付职工薪酬—社会保险费、其他应付款—代扣社保公积金，贷 银行存款
+    policyIds: [cit-regulation, iit-law, iit-regulation]
+
+  - id: evt-severance
+    name: 解除劳动关系补偿
+    group: 薪酬与人力
+    taxTypes: [iit, cit]
+    differences:
+      - code: diff-severance-exemption
+        label: 一次性补偿收入的免税额度
+        description: 个人与用人单位解除劳动关系取得的一次性补偿收入，在当地上年职工平均工资3倍数额以内的部分免征个人所得税，超过部分单独适用综合所得税率表计算。
+        policyIds: [iit-law, iit-regulation]
+      - code: diff-severance-deduction
+        label: 补偿金的企业所得税扣除
+        description: 合理的解除劳动关系补偿支出准予税前扣除，需留存解除协议、支付凭证等资料备查。
+        policyIds: [cit-law, gs-2018-28]
+    returnLines:
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得（解除劳动关系一次性补偿）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105050
+        lineLabel: 职工薪酬支出及纳税调整明细表
+    accountingGuide:
+      - 计提：借 管理费用—辞退福利，贷 应付职工薪酬—辞退福利
+      - 支付：借 应付职工薪酬—辞退福利，贷 银行存款、应交税费—应交个人所得税
+      - 超过免税额度部分的个税由支付方代扣代缴
+    policyIds: [iit-law, iit-regulation, cit-law, gs-2018-28]
+
+  - id: evt-labor-remuneration
+    name: 劳务报酬支付
+    group: 薪酬与人力
+    taxTypes: [iit, vat, cit]
+    differences:
+      - code: diff-labor-invoice
+        label: 劳务报酬的发票与代扣代缴
+        description: 支付给个人的劳务报酬，除小额零星经营业务外应取得发票方可税前扣除，同时由支付方按劳务报酬预扣预缴个人所得税。
+        policyIds: [iit-law, gs-2018-61, gs-2018-28]
+      - code: diff-labor-vat
+        label: 自然人代开发票的增值税
+        description: 自然人提供劳务达到起征点的，需代开增值税发票并缴纳增值税及附加税费，未达起征点的可凭收款凭证扣除。
+        policyIds: [vat-interim-regulation, ann-2023-19]
+    returnLines:
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第2行
+        lineLabel: 劳务报酬所得
+      - taxType: vat
+        form: 增值税及附加税费申报表（小规模纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 应征增值税不含税销售额
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A104000
+        lineLabel: 期间费用明细表
+    accountingGuide:
+      - 支付：借 管理费用—劳务费，贷 银行存款、应交税费—应交个人所得税
+      - 取得发票的，按发票不含税金额计入成本费用，税额按抵扣规则处理
+      - 未取得发票的支出在汇算清缴时做纳税调增
+    policyIds: [iit-law, gs-2018-61, gs-2018-28, ann-2023-19]
+
+  # ===========================================================================
+  # 二、采购与资产
+  # ===========================================================================
+  - id: evt-material-purchase
+    name: 采购原材料
+    group: 采购与资产
+    taxTypes: [vat, cit, stamp]
+    differences:
+      - code: diff-input-vat-timing
+        label: 进项税额抵扣的时点与条件
+        description: 会计在存货入库时确认成本，增值税进项税额需取得合法扣税凭证并用于应税项目方可抵扣；用于简易计税、免税项目的进项税额不得抵扣。
+        policyIds: [vat-law-2024, caishui-2016-36, ann-2019-39]
+      - code: diff-purchase-stamp
+        label: 买卖合同印花税
+        description: 买卖合同的印花税按合同所列金额的万分之三计算，不包括列明的增值税税款，纳税义务发生时间为书立合同的当日。
+        policyIds: [stamp-law, ann-2022-22]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 买卖合同
+        lineLabel: 买卖合同（价款的万分之三）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A104000
+        lineLabel: 期间费用明细表
+    accountingGuide:
+      - 入库：借 原材料、应交税费—应交增值税（进项税额），贷 应付账款/银行存款
+      - 未取得扣税凭证的，先按含税金额入账，取得凭证后再调整
+      - 采购运费计入存货成本，运输服务进项税额按9%抵扣
+    policyIds: [vat-law-2024, caishui-2016-36, ann-2019-39, stamp-law, ann-2022-22]
+
+  - id: evt-fixed-asset-purchase
+    name: 购置固定资产
+    group: 采购与资产
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-one-off-deduction
+        label: 设备器具一次性税前扣除
+        description: 单位价值不超过500万元的设备器具可选择一次性税前扣除，会计上仍按使用年限计提折旧，形成先调减后调增的暂时性差异。
+        policyIds: [ann-2023-37, caishui-2014-75]
+      - code: diff-depreciation-years
+        label: 折旧年限的税会差异
+        description: 会计按预计使用寿命计提折旧，税法规定了房屋建筑物、机器设备等的最低折旧年限，会计年限短于税法年限时需纳税调增。
+        policyIds: [cit-regulation, caishui-2014-75]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额（固定资产）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105080
+        lineLabel: 资产折旧、摊销及纳税调整明细表
+    accountingGuide:
+      - 购入：借 固定资产、应交税费—应交增值税（进项税额），贷 银行存款/应付账款
+      - 次月起计提折旧：借 制造费用/管理费用—折旧费，贷 累计折旧
+      - 一次性扣除是税务处理选择，不得改变会计折旧方法，需建立税会差异台账
+    policyIds: [ann-2023-37, caishui-2014-75, cit-regulation, vat-law-2024]
+
+  - id: evt-depreciation
+    name: 固定资产折旧计提
+    group: 采购与资产
+    taxTypes: [cit]
+    differences:
+      - code: diff-depreciation-method
+        label: 折旧方法与年限的税会差异
+        description: 会计可采用年限平均法、双倍余额递减法等，税法原则上只允许直线法，且缩短年限或加速折旧须符合规定并留存资料备查。
+        policyIds: [cit-regulation, caishui-2014-75]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105080
+        lineLabel: 资产折旧、摊销及纳税调整明细表
+    accountingGuide:
+      - 计提：借 制造费用/管理费用/销售费用—折旧费，贷 累计折旧
+      - 已提足折旧仍继续使用的固定资产不再计提折旧
+      - 税会折旧差异在A105080按资产类别逐项填报
+    policyIds: [cit-regulation, caishui-2014-75, cit-law, cas-basic]
+
+  - id: evt-intangible-amortization
+    name: 无形资产摊销
+    group: 采购与资产
+    taxTypes: [cit]
+    differences:
+      - code: diff-amortization-period
+        label: 摊销年限的税会差异
+        description: 会计按预计使用年限摊销，税法规定无形资产最低摊销年限一般为10年；使用寿命不确定的会计上不摊销，税法仍需按10年摊销。
+        policyIds: [cit-regulation]
+      - code: diff-rd-capitalization
+        label: 研发形成无形资产的加计摊销
+        description: 符合条件企业研发形成的无形资产，按成本的200%在税前摊销，形成纳税调减。
+        policyIds: [ann-2023-7, ann-2023-44]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105080
+        lineLabel: 资产折旧、摊销及纳税调整明细表
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107012
+        lineLabel: 研发费用加计扣除优惠明细表
+    accountingGuide:
+      - 取得：借 无形资产，贷 银行存款/研发支出—资本化支出
+      - 摊销：借 管理费用—无形资产摊销，贷 累计摊销
+      - 加计摊销部分只在申报表调整，不改变账面价值
+    policyIds: [cit-regulation, ann-2023-7, ann-2023-44, cas-basic]
+
+  - id: evt-inventory-scrap
+    name: 存货报废毁损
+    group: 采购与资产
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-scrap-input-transfer
+        label: 非正常损失的进项税额转出
+        description: 因管理不善造成的非正常损失，其对应的进项税额不得抵扣，应作进项税额转出；自然灾害等不可抗力造成的损失按现行规定处理。
+        policyIds: [vat-interim-regulation, caishui-2016-36]
+      - code: diff-scrap-loss-deduction
+        label: 资产损失的税前扣除
+        description: 存货报废损失需以专项申报或清单申报方式扣除，并留存盘点表、责任认定、赔偿说明等资料备查。
+        policyIds: [cit-law, gs-2018-28]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第14栏
+        lineLabel: 进项税额转出
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105090
+        lineLabel: 资产损失税前扣除及纳税调整明细表
+    accountingGuide:
+      - 批准前：借 待处理财产损溢，贷 原材料、应交税费—应交增值税（进项税额转出）
+      - 批准后：借 营业外支出/管理费用，贷 待处理财产损溢
+      - 有责任赔偿的，冲减营业外支出
+    policyIds: [vat-interim-regulation, caishui-2016-36, cit-law, gs-2018-28]
+
+  # ===========================================================================
+  # 三、销售与收入
+  # ===========================================================================
+  - id: evt-goods-sale
+    name: 商品销售收入
+    group: 销售与收入
+    taxTypes: [vat, cit, stamp]
+    differences:
+      - code: diff-revenue-timing
+        label: 会计收入确认时点与增值税纳税义务发生时间
+        description: 会计按控制权转移确认收入，增值税纳税义务发生时间为收讫销售款项或取得索取款项凭据的当天；先开票的，为开票当天。两者可能分属不同期间。
+        policyIds: [cas-14-revenue, vat-law-2024, caishui-2016-36]
+      - code: diff-cit-revenue-recognition
+        label: 企业所得税收入确认口径
+        description: 企业所得税以权责发生制为原则，商品销售一般在发出商品且收取价款或取得索取价款凭据时确认收入，与会计口径总体趋同但存在视同销售等差异。
+        policyIds: [cit-law, cit-regulation]
+      - code: diff-e-invoice
+        label: 数电发票的开具与查验
+        description: 全面数字化电子发票与纸质发票具有同等法律效力，开票即完成数据电文交付；受票方应以发票号码与开票日期作为唯一性判定，防止重复入账。
+        policyIds: [e-invoice-2024, invoice-measures, gs-2017-16]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第11栏
+        lineLabel: 销项税额
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 买卖合同
+        lineLabel: 买卖合同（价款的万分之三）
+    accountingGuide:
+      - 确认收入：借 应收账款/银行存款，贷 主营业务收入、应交税费—应交增值税（销项税额）
+      - 结转成本：借 主营业务成本，贷 库存商品
+      - 开票金额、申报销售额、账面收入三者应逐月勾稽
+    policyIds: [cas-14-revenue, vat-law-2024, caishui-2016-36, cit-law, stamp-law]
+
+  - id: evt-service-revenue
+    name: 提供服务收入
+    group: 销售与收入
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-service-vat-rate
+        label: 服务收入适用税率
+        description: 现代服务、生活服务一般适用6%税率，交通运输、建筑服务适用9%，小规模纳税人适用3%征收率并可能享受减按1%的优惠。
+        policyIds: [caishui-2016-36, ann-2019-39, ann-2023-19]
+      - code: diff-service-revenue-timing
+        label: 履约进度确认与纳税义务
+        description: 会计按履约进度确认收入，增值税按合同约定付款日期或收款日期确定纳税义务，跨期项目需分别处理。
+        policyIds: [cas-14-revenue, vat-law-2024]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+    accountingGuide:
+      - 确认收入：借 应收账款，贷 主营业务收入、应交税费—应交增值税（销项税额）
+      - 预收款项按合同履约义务确认为合同负债，待履约时结转收入
+    policyIds: [caishui-2016-36, ann-2019-39, ann-2023-19, cas-14-revenue, vat-law-2024]
+
+  - id: evt-advance-receipt
+    name: 预收款与合同负债
+    group: 销售与收入
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-contract-liability
+        label: 合同负债与预收账款的科目差异
+        description: 执行新收入准则的企业，与客户合同相关的预收款通过合同负债核算；小企业会计准则仍使用预收账款。两者在报表列示与税务口径上均需分别处理。
+        policyIds: [cas-14-revenue, small-enterprise-standard]
+      - code: diff-advance-vat
+        label: 预收款是否产生增值税纳税义务
+        description: 一般商品销售预收款不产生纳税义务；提供建筑服务、租赁服务采取预收款方式的，收到预收款时即产生纳税义务（建筑服务可按规定预缴）。
+        policyIds: [vat-law-2024, caishui-2016-36]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+    accountingGuide:
+      - 收款：借 银行存款，贷 合同负债（或预收账款）、应交税费—待转销项税额
+      - 履约确认收入：借 合同负债，贷 主营业务收入、应交税费—应交增值税（销项税额）
+    policyIds: [cas-14-revenue, small-enterprise-standard, vat-law-2024, caishui-2016-36]
+
+  - id: evt-deemed-sale
+    name: 视同销售
+    group: 销售与收入
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-deemed-vat
+        label: 增值税视同销售范围
+        description: 将自产、委托加工或购买的货物用于投资、分配、无偿赠送等情形，增值税视同销售；用于集体福利或个人消费的，自产货物视同销售、外购货物作进项税额转出。
+        policyIds: [vat-law-2024, vat-interim-regulation]
+      - code: diff-deemed-cit
+        label: 企业所得税视同销售口径
+        description: 企业所得税视同销售强调资产所有权转移，用于市场推广、交际应酬等改变资产所有权属的应视同销售，未转移所有权的不视同销售，与增值税口径存在差异。
+        policyIds: [cit-law, cit-regulation]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额（视同销售）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105010
+        lineLabel: 视同销售和房地产开发企业特定业务纳税调整明细表
+    accountingGuide:
+      - 自产货物用于赠送：借 销售费用—业务宣传费，贷 库存商品、应交税费—应交增值税（销项税额）
+      - 企业所得税视同销售同时确认视同销售收入与视同销售成本
+      - 增值税与企业所得税视同销售范围不一致的，以各自口径分别调整
+    policyIds: [vat-law-2024, vat-interim-regulation, cit-law, cit-regulation]
+
+  - id: evt-sales-return
+    name: 销售折让与退回
+    group: 销售与收入
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-return-red-invoice
+        label: 销售退回的红字发票处理
+        description: 发生销售退回或折让，应按规定开具红字发票冲减销售额和销项税额，会计上冲减当期收入与成本，跨年度退回需判断是否属于资产负债表日后事项。
+        policyIds: [invoice-measures, gs-2019-14, cas-14-revenue]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额（红字冲减）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+    accountingGuide:
+      - 冲减收入：借 主营业务收入、应交税费—应交增值税（销项税额），贷 应收账款/银行存款
+      - 冲减成本：借 库存商品，贷 主营业务成本
+      - 红字发票须与退回协议、验收记录一一对应
+    policyIds: [invoice-measures, gs-2019-14, cas-14-revenue, vat-law-2024]
+
+  # ===========================================================================
+  # 四、费用与支出
+  # ===========================================================================
+  - id: evt-travel-expense
+    name: 差旅费报销
+    group: 费用与支出
+    taxTypes: [vat, cit, iit]
+    differences:
+      - code: diff-travel-input
+        label: 旅客运输服务的进项抵扣
+        description: 国内旅客运输服务进项税额允许从销项税额中抵扣，以增值税专用发票、电子普通发票或注明旅客身份信息的行程单、车票为扣税凭证，按规定的计算方法计算抵扣。
+        policyIds: [ann-2019-39, gs-2019-14]
+      - code: diff-travel-allowance
+        label: 差旅费津贴的个税处理
+        description: 按规定标准发放的差旅费津贴不属于工资薪金性质，不征收个人所得税；超标准或人人有份的补贴应并入工资薪金计税。
+        policyIds: [iit-law, iit-regulation]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额（旅客运输服务）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A104000
+        lineLabel: 期间费用明细表
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得
+    accountingGuide:
+      - 报销：借 管理费用—差旅费、应交税费—应交增值税（进项税额），贷 银行存款/其他应付款—员工报销款
+      - 车票、行程单需注明旅客身份信息方可计算抵扣
+      - 差旅补助应有公司制度支撑，避免被认定为工资薪金
+    policyIds: [ann-2019-39, gs-2019-14, cit-regulation, iit-law]
+
+  - id: evt-business-entertainment
+    name: 业务招待费
+    group: 费用与支出
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-entertainment-cap
+        label: 业务招待费扣除限额
+        description: 业务招待费按发生额的60%扣除，但最高不得超过当年销售（营业）收入的5‰，两者孰低；超支部分永久性差异，需纳税调增。
+        policyIds: [cit-regulation, cit-law]
+      - code: diff-entertainment-input
+        label: 招待支出的进项税额
+        description: 用于交际应酬消费的购进货物、餐饮服务，其进项税额不得从销项税额中抵扣，应计入费用。
+        policyIds: [caishui-2016-36, vat-law-2024]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（业务招待费支出）
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第14栏
+        lineLabel: 进项税额转出
+    accountingGuide:
+      - 支付：借 管理费用—业务招待费，贷 银行存款
+      - 取得专用发票的，先认证再作进项税额转出，或直接价税合计入账
+      - 汇算清缴时按60%与5‰孰低计算扣除限额
+    policyIds: [cit-regulation, cit-law, caishui-2016-36, vat-law-2024]
+
+  - id: evt-advertising
+    name: 广告宣传费
+    group: 费用与支出
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-ad-cap
+        label: 广告费和业务宣传费扣除限额
+        description: 一般企业不超过当年销售（营业）收入15%的部分准予扣除，超过部分准予在以后纳税年度结转扣除；化妆品、医药、饮料制造企业限额为30%。
+        policyIds: [cit-regulation, cit-law]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105060
+        lineLabel: 广告费和业务宣传费等跨年度纳税调整明细表
+    accountingGuide:
+      - 支付：借 销售费用—广告宣传费，贷 银行存款
+      - 超限额部分形成可抵扣暂时性差异，需登记结转台账
+      - 与赞助支出区分：赞助支出不得扣除
+    policyIds: [cit-regulation, cit-law]
+
+  - id: evt-interest-expense
+    name: 利息支出
+    group: 费用与支出
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-interest-nonbank
+        label: 非金融企业借款利息的扣除限额
+        description: 向非金融企业借款的利息支出，不超过按照金融企业同期同类贷款利率计算的数额的部分准予扣除，超过部分纳税调增。
+        policyIds: [cit-regulation, cit-law]
+      - code: diff-interest-vat
+        label: 贷款服务的进项税额
+        description: 购进的贷款服务其进项税额不得从销项税额中抵扣，与之相关的手续费、咨询费如取得专用发票可按对应税目处理。
+        policyIds: [caishui-2016-36, ann-2019-39]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（利息支出）
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第14栏
+        lineLabel: 进项税额转出
+    accountingGuide:
+      - 计提：借 财务费用—利息支出，贷 应付利息
+      - 支付：借 应付利息，贷 银行存款
+      - 符合资本化条件的借款费用计入在建工程，不得直接费用化
+    policyIds: [cit-regulation, cit-law, caishui-2016-36, ann-2019-39]
+
+  - id: evt-penalty
+    name: 罚款与税收滞纳金
+    group: 费用与支出
+    taxTypes: [cit]
+    differences:
+      - code: diff-penalty-nondeductible
+        label: 行政罚款与滞纳金不得扣除
+        description: 税收滞纳金、罚金、罚款和被没收财物的损失不得在企业所得税前扣除，会计上计入营业外支出，汇算清缴时全额纳税调增。
+        policyIds: [cit-law, cit-regulation]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（罚金、罚款和被没收财物的损失）
+    accountingGuide:
+      - 支付：借 营业外支出—罚款/滞纳金，贷 银行存款
+      - 该支出不产生暂时性差异，属于永久性差异
+      - 合同违约金、诉讼赔偿等经营性支出一般可扣除，需与行政罚款区分
+    policyIds: [cit-law, cit-regulation]
+
+  # ===========================================================================
+  # 五、补助与投资
+  # ===========================================================================
+  - id: evt-government-grant
+    name: 政府补助
+    group: 补助与投资
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-grant-taxable
+        label: 政府补助的应税与不征税处理
+        description: 企业取得的政府补助，除属于国家投资和资金使用后要求归还本金外，均应计入收入总额；符合条件的可作为不征税收入，但对应支出不得扣除，需做纳税调整。
+        policyIds: [cit-law, cit-regulation]
+      - code: diff-grant-vat
+        label: 政府补助是否涉及增值税
+        description: 与销售货物、服务数量直接挂钩的财政补贴收入，应按价外费用并入销售额计算增值税；其他情形的财政补贴不属于增值税应税收入。
+        policyIds: [vat-law-2024, caishui-2016-36]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105020
+        lineLabel: 未按权责发生制确认收入纳税调整明细表
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额（价外费用）
+    accountingGuide:
+      - 与资产相关的补助：借 银行存款，贷 递延收益，按资产使用寿命分摊计入其他收益
+      - 与收益相关的补助：借 银行存款，贷 其他收益/营业外收入
+      - 选择不征税收入处理的，需建立台账跟踪对应支出的调整
+    policyIds: [cit-law, cit-regulation, vat-law-2024, caishui-2016-36]
+
+  - id: evt-dividend-income
+    name: 股息红利收入
+    group: 补助与投资
+    taxTypes: [cit, iit]
+    differences:
+      - code: diff-dividend-exemption
+        label: 居民企业之间股息红利的免税
+        description: 符合条件的居民企业之间的股息、红利等权益性投资收益为免税收入，但不包括连续持有居民企业公开发行并上市流通的股票不足12个月取得的投资收益。
+        policyIds: [cit-law, cit-regulation]
+      - code: diff-dividend-iit
+        label: 自然人股东分红的个人所得税
+        description: 自然人股东取得的分红按利息、股息、红利所得适用20%税率，由派发方代扣代缴；上市公司股票分红按持股期限实行差别化政策。
+        policyIds: [iit-law, iit-regulation]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107011
+        lineLabel: 符合条件的居民企业之间的股息、红利等权益性投资收益优惠明细表
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第5行
+        lineLabel: 利息、股息、红利所得
+    accountingGuide:
+      - 宣告分配：借 应收股利，贷 投资收益
+      - 收到：借 银行存款，贷 应收股利
+      - 免税收入需在申报表单独填报，不能直接冲减会计利润
+    policyIds: [cit-law, cit-regulation, iit-law, iit-regulation]
+
+  - id: evt-equity-method
+    name: 权益法投资收益
+    group: 补助与投资
+    taxTypes: [cit]
+    differences:
+      - code: diff-equity-method
+        label: 权益法确认收益与税法确认时点
+        description: 权益法下按应享有被投资单位净利润的份额确认投资收益，税法以被投资方作出利润分配决定时确认收入，形成可抵扣暂时性差异。
+        policyIds: [cit-law, cit-regulation, cas-basic]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105030
+        lineLabel: 投资收益纳税调整明细表
+    accountingGuide:
+      - 确认份额：借 长期股权投资—损益调整，贷 投资收益
+      - 收到分红：借 银行存款，贷 长期股权投资—损益调整
+      - 小企业会计准则下长期股权投资采用成本法，不产生该差异
+    policyIds: [cit-law, cit-regulation, cas-basic, small-enterprise-standard]
+
+  # ===========================================================================
+  # 六、特殊与优惠
+  # ===========================================================================
+  - id: evt-rd-expense
+    name: 研发费用加计扣除
+    group: 特殊与优惠
+    taxTypes: [cit]
+    differences:
+      - code: diff-rd-super-deduction
+        label: 研发费用加计扣除的税会差异
+        description: 会计上研发支出据实计入费用或无形资产成本；税法在据实扣除基础上再按100%加计扣除（集成电路和工业母机企业为120%），只调申报表不调账。
+        policyIds: [ann-2023-7, ann-2023-44, caishui-2018-99]
+      - code: diff-rd-expense-vs-capital
+        label: 费用化与资本化的划分
+        description: 企业会计准则要求区分研究阶段与开发阶段，小企业会计准则下研发支出全部费用化，两套准则的加计扣除基数不同。
+        policyIds: [small-enterprise-standard, cas-basic, ann-2023-7]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107012
+        lineLabel: 研发费用加计扣除优惠明细表
+      - taxType: cit
+        form: 企业所得税月（季）度预缴纳税申报表（A类）
+        lineCode: 第7行
+        lineLabel: 免税收入、减计收入、加计扣除等优惠事项
+    accountingGuide:
+      - 归集：借 研发支出—费用化支出，贷 应付职工薪酬、原材料、银行存款
+      - 结转：借 管理费用—研发费用，贷 研发支出—费用化支出
+      - 按研发项目设置辅助账，项目立项决议、工时记录、领料单须完整
+    policyIds: [ann-2023-7, ann-2023-44, caishui-2018-99, ann-2021-13, cit-law]
+
+  - id: evt-small-micro-profit
+    name: 小型微利企业优惠
+    group: 特殊与优惠
+    taxTypes: [cit]
+    differences:
+      - code: diff-small-micro
+        label: 小型微利企业的减免税额计算
+        description: 小型微利企业年应纳税所得额不超过300万元的部分，减按25%计入应纳税所得额并按20%税率缴纳，实际税负5%，减免税额在申报表单独填报。
+        policyIds: [ann-2023-12, ann-2023-6, cit-law]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107040
+        lineLabel: 减免所得税优惠明细表
+      - taxType: cit
+        form: 企业所得税月（季）度预缴纳税申报表（A类）
+        lineCode: 第13行
+        lineLabel: 减免所得税额
+    accountingGuide:
+      - 按实际应缴税额计提：借 所得税费用，贷 应交税费—应交企业所得税
+      - 优惠金额不确认收益，直接减少应交税费
+      - 从业人数、资产总额、应纳税所得额三项指标需在申报时留存计算过程
+    policyIds: [ann-2023-12, ann-2023-6, cit-law]
+
+  - id: evt-high-tech
+    name: 高新技术企业优惠
+    group: 特殊与优惠
+    taxTypes: [cit]
+    differences:
+      - code: diff-high-tech-rate
+        label: 高新技术企业15%优惠税率
+        description: 经认定的高新技术企业减按15%的税率征收企业所得税，认定资格有效期三年，期满需重新认定；与小型微利企业优惠择优享受，不得叠加。
+        policyIds: [cit-law, ann-2023-12]
+      - code: diff-high-tech-rd
+        label: 研发费用占比的持续满足
+        description: 高新技术企业资格要求研发费用占销售收入的比例达到规定标准，资格存续期间需逐年复核，比例不达标可能被取消资格并补缴税款。
+        policyIds: [cit-law, cit-regulation]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107041
+        lineLabel: 高新技术企业优惠情况及明细表
+    accountingGuide:
+      - 按15%计提所得税：借 所得税费用，贷 应交税费—应交企业所得税
+      - 资格到期当年需判断是否仍适用优惠税率，必要时按25%计提
+      - 高新证书、研发项目资料、科技人员名单应归档备查
+    policyIds: [cit-law, cit-regulation, ann-2023-7]
+
+  - id: evt-software-refund
+    name: 软件产品增值税即征即退
+    group: 特殊与优惠
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-software-refund
+        label: 即征即退税款的企业所得税处理
+        description: 软件产品增值税实际税负超过3%的部分实行即征即退；取得的退税款由企业专项用于软件产品研发和扩大再生产并单独核算的，可作为不征税收入处理。
+        policyIds: [vat-law-2024, cit-law, cit-regulation]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第23栏
+        lineLabel: 应纳税额减征额（即征即退）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105040
+        lineLabel: 专项用途财政性资金纳税调整明细表
+    accountingGuide:
+      - 销售：借 应收账款，贷 主营业务收入、应交税费—应交增值税（销项税额）
+      - 收到退税：借 银行存款，贷 其他收益（或冲减应交税费）
+      - 作为不征税收入处理的，对应支出不得扣除，需建立专项台账
+    policyIds: [vat-law-2024, cit-law, cit-regulation]
+
+  # ===========================================================================
+  # 七、资金与金融
+  # ===========================================================================
+  - id: evt-bank-loan
+    name: 银行借款与利息
+    group: 资金与金融
+    taxTypes: [cit, stamp]
+    differences:
+      - code: diff-loan-stamp
+        label: 借款合同印花税
+        description: 银行及其他金融组织和借款人所签订的借款合同按借款金额的万分之零点五计算印花税，不包括银行同业借款。
+        policyIds: [stamp-law, ann-2022-22]
+      - code: diff-loan-interest-capitalize
+        label: 借款费用资本化
+        description: 符合资本化条件的借款费用计入相关资产成本，税法对其资本化口径与会计基本一致，但资产折旧年限差异会传导至后续年度。
+        policyIds: [cit-regulation, cas-basic]
+    returnLines:
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 借款合同
+        lineLabel: 借款合同（借款金额的万分之零点五）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（利息支出）
+    accountingGuide:
+      - 取得借款：借 银行存款，贷 短期借款/长期借款
+      - 计提利息：借 财务费用—利息支出（或在建工程），贷 应付利息
+      - 借款合同签订次月申报印花税
+    policyIds: [stamp-law, ann-2022-22, cit-regulation, cas-basic]
+
+  - id: evt-bill-discount
+    name: 票据贴现
+    group: 资金与金融
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-discount-interest
+        label: 贴现息的财务费用与税前扣除
+        description: 票据贴现息计入财务费用，属于与生产经营有关的合理支出，凭贴现凭证与利息单据税前扣除；贴现利息的进项税额不得抵扣。
+        policyIds: [cit-regulation, caishui-2016-36]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A104000
+        lineLabel: 期间费用明细表（财务费用）
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第14栏
+        lineLabel: 进项税额转出
+    accountingGuide:
+      - 贴现：借 银行存款、财务费用—利息支出，贷 应收票据
+      - 商业承兑汇票贴现附追索权的，应按借款处理，不终止确认应收票据
+      - 贴现息单据需与银行流水一一对应
+    policyIds: [cit-regulation, caishui-2016-36]
+
+  - id: evt-fx-gain-loss
+    name: 汇兑损益
+    group: 资金与金融
+    taxTypes: [cit]
+    differences:
+      - code: diff-fx-translation
+        label: 期末外币折算的税会差异
+        description: 会计按资产负债表日即期汇率折算外币货币性项目，差额计入财务费用—汇兑差额；企业所得税按期末汇率中间价折算，二者一般一致，但汇率选择不同会产生差异。
+        policyIds: [cit-regulation, cas-basic]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（其他）
+    accountingGuide:
+      - 期末折算：借 财务费用—汇兑差额，贷 银行存款（外币户）
+      - 汇兑损益在利润表单独或合并列示于财务费用
+      - 汇率选择应在会计政策中明确并保持一致
+    policyIds: [cit-regulation, cas-basic]
+
+  # ===========================================================================
+  # 八、税费与附加
+  # ===========================================================================
+  - id: evt-vat-accrual
+    name: 计提与结转增值税
+    group: 税费与附加
+    taxTypes: [vat, surcharge]
+    differences:
+      - code: diff-vat-month-end
+        label: 月末转出未交增值税
+        description: 月末将当月应交未交的增值税自「应交税费—应交增值税（转出未交增值税）」转入「未交增值税」，次月缴纳时冲减；该处理不影响损益，仅影响科目余额结构。
+        policyIds: [vat-law-2024, vat-interim-regulation]
+      - code: diff-vat-surcharge-base
+        label: 附加税费的计税依据
+        description: 城建税、教育费附加、地方教育附加以实际缴纳的增值税、消费税税额为计税依据，与增值税同属一个申报期。
+        policyIds: [urban-construction-law, ann-2023-12]
+      - code: diff-vat-credit-refund
+        label: 期末留抵税额退税的处理
+        description: 符合条件的纳税人可申请退还增量或存量留抵税额，退税后应相应调减留抵税额；会计上按收到的退税款冲减「应交税费—应交增值税（进项税额转出）」，不确认收入。
+        policyIds: [ann-2022-14, vat-law-2024]
+      - code: diff-vat-addl-deduction
+        label: 加计抵减额的计提与抵减
+        description: 先进制造业企业按当期可抵扣进项税额的5%计提加计抵减额，仅用于抵减当期应纳税额，不得结转下期，也不得申请留抵退税。
+        policyIds: [ann-2023-43, ann-2019-39]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第19栏
+        lineLabel: 应纳税额
+      - taxType: surcharge
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 附列资料（五）
+        lineLabel: 附加税费计算表
+    accountingGuide:
+      - 月末：借 应交税费—应交增值税（转出未交增值税），贷 应交税费—未交增值税
+      - 缴纳：借 应交税费—未交增值税，贷 银行存款
+      - 增值税为价外税，不计入损益，不得在所得税前扣除
+    policyIds: [vat-law-2024, vat-interim-regulation, urban-construction-law, ann-2023-12]
+
+  - id: evt-surcharge
+    name: 计提附加税费
+    group: 税费与附加
+    taxTypes: [surcharge]
+    differences:
+      - code: diff-surcharge-rate
+        label: 城建税税率与附加费率
+        description: 城建税按纳税人所在地实行7%、5%、1%三档税率，教育费附加3%、地方教育附加2%，合计附加率随地区与主税种变化。
+        policyIds: [urban-construction-law]
+      - code: diff-surcharge-reduction
+        label: 六税两费减半征收
+        description: 增值税小规模纳税人、小型微利企业和个体工商户可减半征收城建税、教育费附加、地方教育附加，减免部分在申报表减免税栏次填报。
+        policyIds: [ann-2023-12]
+    returnLines:
+      - taxType: surcharge
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 附列资料（五）
+        lineLabel: 附加税费计算表（减免性质代码栏）
+    accountingGuide:
+      - 计提：借 税金及附加，贷 应交税费—应交城市维护建设税、应交税费—应交教育费附加
+      - 缴纳：借 应交税费—应交城市维护建设税等，贷 银行存款
+      - 减免部分不作计提，按实际应缴金额入账
+    policyIds: [urban-construction-law, ann-2023-12, vat-law-2024]
+
+  - id: evt-stamp-declare
+    name: 印花税申报
+    group: 税费与附加
+    taxTypes: [stamp]
+    differences:
+      - code: diff-stamp-base
+        label: 计税依据是否含增值税
+        description: 应税合同的计税依据为合同所列金额，不包括列明的增值税税款；合同未单独列明增值税的，按含税金额计算。
+        policyIds: [stamp-law, ann-2022-22]
+      - code: diff-stamp-frequency
+        label: 按期与按次申报
+        description: 印花税按季、按年或者按次计征，具体方式由主管税务机关确定；境外书立在境内使用的应税凭证由境内代理人或纳税人申报。
+        policyIds: [stamp-law, ann-2022-22]
+    returnLines:
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 买卖合同
+        lineLabel: 买卖合同（价款的万分之三）
+    accountingGuide:
+      - 计提：借 税金及附加—印花税，贷 应交税费—应交印花税
+      - 缴纳：借 应交税费—应交印花税，贷 银行存款
+      - 印花税不通过「应交税费—应交增值税」核算，不影响增值税申报
+    policyIds: [stamp-law, ann-2022-22, ann-2023-12]
+
+  - id: evt-property-tax
+    name: 房产税申报
+    group: 税费与附加
+    taxTypes: [property]
+    differences:
+      - code: diff-property-self-use
+        label: 自用从价与出租从租
+        description: 自用房产按房产原值一次减除10%至30%后的余值、按1.2%税率计算；出租房产按租金收入的12%计算，两种方式不能混用。
+        policyIds: [property-tax-interim]
+      - code: diff-property-renovation
+        label: 装修支出是否计入房产原值
+        description: 更换房屋附属设备和配套设施的，在将其价值计入房产原值时可扣减原来相应设备和设施的价值；日常修缮支出一般不计入房产原值。
+        policyIds: [property-tax-interim]
+    returnLines:
+      - taxType: property
+        form: 财产和行为税纳税申报表（房产税税源明细表）
+        lineCode: 从价计征
+        lineLabel: 房产税（从价计征，房产原值减除后的余值）
+    accountingGuide:
+      - 计提：借 税金及附加—房产税，贷 应交税费—应交房产税
+      - 缴纳：借 应交税费—应交房产税，贷 银行存款
+      - 房产原值以会计账簿记载的房屋原价为基础确定
+    policyIds: [property-tax-interim, urban-land-use-interim, ann-2023-12]
+
+  - id: evt-cit-prepay
+    name: 企业所得税预缴
+    group: 税费与附加
+    taxTypes: [cit]
+    differences:
+      - code: diff-prepay-basis
+        label: 预缴方式的税会差异
+        description: 企业所得税按月（季）预缴，可按实际利润额预缴或按上年度应纳税所得额的平均额预缴；预缴税额与年度汇算清缴应纳税额之间的差额在汇算时补退。
+        policyIds: [cit-law, cit-regulation]
+      - code: diff-prepay-adjustment
+        label: 预缴阶段的纳税调整
+        description: 预缴阶段一般不进行纳税调整，仅对不征税收入、免税收入、加计扣除等事项作简化处理，完整调整在年度汇算时进行。
+        policyIds: [cit-law, ann-2023-7]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税月（季）度预缴纳税申报表（A类）
+        lineCode: 第12行
+        lineLabel: 应纳所得税额
+    accountingGuide:
+      - 计提：借 所得税费用，贷 应交税费—应交企业所得税
+      - 缴纳：借 应交税费—应交企业所得税，贷 银行存款
+      - 预缴金额与汇算清缴金额的差额通过「以前年度损益调整」或当期所得税费用处理
+    policyIds: [cit-law, cit-regulation, ann-2023-7]
+
+  # ===========================================================================
+  # 九、关联与集团
+  # ===========================================================================
+  - id: evt-related-loan
+    name: 关联方资金占用
+    group: 关联与集团
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-related-interest-ratio
+        label: 关联方利息支出的债资比限制
+        description: 企业实际支付给关联方的利息支出，不超过规定债资比例（金融企业5比1，其他企业2比1）和税法及其实施条例有关规定计算的部分准予扣除，超过部分不得在发生当期和以后年度扣除。
+        policyIds: [cit-law, cit-regulation, gs-2016-42]
+      - code: diff-related-vat
+        label: 无偿占用资金是否视同销售
+        description: 单位向其他单位无偿提供服务原则上视同销售服务，但用于公益事业或以社会公众为对象的除外；关联方之间无偿拆借资金存在被核定增值税的风险。
+        policyIds: [vat-law-2024, caishui-2016-36]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（利息支出）
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额
+    accountingGuide:
+      - 借出：借 其他应收款—关联方，贷 银行存款
+      - 计提利息：借 财务费用/其他应收款，贷 其他业务收入、应交税费—应交增值税（销项税额）
+      - 关联方往来余额应与对方账面记录定期核对
+    policyIds: [cit-law, cit-regulation, gs-2016-42, vat-law-2024, caishui-2016-36]
+
+  - id: evt-transfer-pricing
+    name: 关联交易转让定价
+    group: 关联与集团
+    taxTypes: [cit]
+    differences:
+      - code: diff-tp-principle
+        label: 独立交易原则的纳税调整
+        description: 关联方之间的业务往来不符合独立交易原则而减少应纳税收入的，税务机关有权按合理方法调整；企业应在年度申报时填报关联业务往来报告表。
+        policyIds: [cit-law, gs-2016-42]
+      - code: diff-tp-documentation
+        label: 同期资料准备义务
+        description: 达到规定标准的关联交易需准备主体文档、本地文档和特殊事项文档，未按规定准备可能被责令限期改正并处罚款。
+        policyIds: [gs-2016-42]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 关联业务往来报告表
+        lineLabel: 关联关系表、关联交易汇总表等
+    accountingGuide:
+      - 按公允价格确认关联交易收入与成本
+      - 关联交易定价方法（可比非受控价格法、成本加成法等）应形成书面文档
+      - 被特别纳税调整的，补缴税款加收利息，不征收滞纳金
+    policyIds: [cit-law, gs-2016-42, cit-regulation]
+
+  - id: evt-group-service-fee
+    name: 集团管理费分摊
+    group: 关联与集团
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-group-management-fee
+        label: 企业间管理费不得扣除
+        description: 企业之间支付的管理费、企业内营业机构之间支付的租金和特许权使用费，以及非银行企业内营业机构之间支付的利息，不得扣除。
+        policyIds: [cit-regulation, cit-law]
+      - code: diff-group-service-vat
+        label: 管理服务的增值税
+        description: 集团母公司向子公司提供服务并收取费用的，属于增值税应税服务，应开具发票并申报销项税额，子公司凭票抵扣与扣除。
+        policyIds: [caishui-2016-36, vat-law-2024]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105000
+        lineLabel: 纳税调整项目明细表（其他）
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额
+    accountingGuide:
+      - 分摊：借 管理费用—服务费，贷 其他应付款—集团
+      - 取得发票的按不含税金额计入费用并抵扣进项
+      - 无真实服务内容的管理费分摊存在被纳税调整的风险
+    policyIds: [cit-regulation, cit-law, caishui-2016-36, vat-law-2024]
+
+  # ===========================================================================
+  # 十、出口与跨境
+  # ===========================================================================
+  - id: evt-export-refund
+    name: 出口货物免抵退税
+    group: 出口与跨境
+    taxTypes: [vat, cit, surcharge]
+    differences:
+      - code: diff-export-refund
+        label: 免抵退税额与应纳税所得额
+        description: 生产企业出口自产货物适用免抵退税办法，免抵税额需计算缴纳城建税与教育费附加；出口退税本身不构成企业所得税应税收入。
+        policyIds: [caishui-2012-39, urban-construction-law]
+      - code: diff-export-no-refund
+        label: 不得免征和抵扣税额
+        description: 征退税率之差的部分作进项税额转出，计入主营业务成本，影响会计利润与企业所得税。
+        policyIds: [caishui-2012-39, vat-law-2024]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第15栏
+        lineLabel: 免、抵、退应退税额
+      - taxType: surcharge
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 附列资料（五）
+        lineLabel: 附加税费计算表（免抵税额）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+    accountingGuide:
+      - 出口销售：借 应收账款，贷 主营业务收入
+      - 不得免征和抵扣税额：借 主营业务成本，贷 应交税费—应交增值税（进项税额转出）
+      - 应收出口退税款：借 其他应收款—出口退税，贷 应交税费—应交增值税（出口退税）
+    policyIds: [caishui-2012-39, vat-law-2024, urban-construction-law, cit-law]
+
+  - id: evt-import-goods
+    name: 进口货物关税与进口环节税
+    group: 出口与跨境
+    taxTypes: [vat, consumption]
+    differences:
+      - code: diff-import-duty-base
+        label: 进口环节计税价格的构成
+        description: 进口关税完税价格以成交价格为基础确定；进口环节增值税以关税完税价格加关税加消费税为计税依据，由海关代征并出具专用缴款书。
+        policyIds: [tariff-law, vat-law-2024, consumption-interim]
+      - code: diff-import-credit
+        label: 进口环节增值税的抵扣
+        description: 取得海关进口增值税专用缴款书并完成比对后，可作为进项税额抵扣；用于免税项目的不得抵扣。
+        policyIds: [ann-2019-39, vat-law-2024]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额（海关进口增值税专用缴款书）
+      - taxType: consumption
+        form: 消费税及附加税费申报表
+        lineCode: 第1栏
+        lineLabel: 应税消费品销售额（进口环节）
+    accountingGuide:
+      - 采购：借 原材料/库存商品（含关税、消费税）、应交税费—应交增值税（进项税额），贷 银行存款
+      - 关税与消费税计入存货成本，进口环节增值税可抵扣部分不计入成本
+      - 缴款书需在规定的比对期限内完成稽核比对
+    policyIds: [tariff-law, vat-law-2024, consumption-interim, ann-2019-39]
+
+  - id: evt-cross-border-service
+    name: 跨境应税服务
+    group: 出口与跨境
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-cross-border-zero-rate
+        label: 跨境服务零税率与免税的区分
+        description: 向境外单位提供的完全在境外消费的研发服务、设计服务等适用零税率，可以退税；国际运输、向境外单位提供的部分服务适用免税，进项税额不得抵扣。
+        policyIds: [caishui-2016-36, vat-law-2024]
+      - code: diff-cross-border-cit
+        label: 境外所得的税收抵免
+        description: 居民企业来源于境外的所得已在境外缴纳的所得税税额，可以在抵免限额内抵免，超过部分可在以后五个年度结转抵免。
+        policyIds: [cit-law, cit-regulation]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第15栏
+        lineLabel: 免、抵、退应退税额
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A108000
+        lineLabel: 境外所得税收抵免明细表
+    accountingGuide:
+      - 确认收入：借 应收账款，贷 主营业务收入
+      - 适用零税率的，按免抵退税申报程序办理退税
+      - 境外已纳税额需取得完税证明及翻译件
+    policyIds: [caishui-2016-36, vat-law-2024, cit-law, cit-regulation]
+
+  - id: evt-overseas-payment
+    name: 境外支付与代扣代缴
+    group: 出口与跨境
+    taxTypes: [vat, cit]
+    differences:
+      - code: diff-withholding-vat
+        label: 境外单位提供服务的增值税扣缴
+        description: 境外单位在境内发生应税行为而在境内未设有经营机构的，以购买方为增值税扣缴义务人，按适用税率扣缴增值税。
+        policyIds: [vat-law-2024, caishui-2016-36]
+      - code: diff-withholding-cit
+        label: 非居民企业所得税源泉扣缴
+        description: 非居民企业取得来源于中国境内的股息、利息、租金、特许权使用费等所得，按10%的税率由支付方代扣代缴企业所得税，税收协定另有约定的从其约定。
+        policyIds: [cit-law, cit-regulation]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额（代扣代缴完税凭证）
+      - taxType: cit
+        form: 中华人民共和国扣缴企业所得税报告表
+        lineCode: 第1行
+        lineLabel: 扣缴企业所得税应纳税所得额
+    accountingGuide:
+      - 支付：借 管理费用—服务费，贷 银行存款、应交税费—代扣代缴增值税、应交税费—代扣代缴企业所得税
+      - 代扣税款需在规定期限内解缴并取得完税凭证
+      - 适用税收协定的需完成备案并留存居民身份证明
+    policyIds: [vat-law-2024, caishui-2016-36, cit-law, cit-regulation]
+
+  # ===========================================================================
+  # 十一、优惠与备案
+  # ===========================================================================
+  - id: evt-rd-ledger
+    name: 研发费用辅助账建立
+    group: 优惠与备案
+    taxTypes: [cit]
+    differences:
+      - code: diff-rd-ledger
+        label: 辅助账与留存备查资料
+        description: 享受研发费用加计扣除需按研发项目设置辅助账，准确归集可加计扣除的研发费用；相关资料由企业留存备查，不再事前备案。
+        policyIds: [ann-2023-7, ann-2021-13]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107012
+        lineLabel: 研发费用加计扣除优惠明细表
+    accountingGuide:
+      - 按项目设置「研发支出」明细账与辅助账，人员人工、直接投入、折旧、无形资产摊销分列
+      - 立项决议、研发人员名单、工时分配表、领料单按月归档
+      - 辅助账合计数应与A107012及账面研发费用勾稽一致
+    policyIds: [ann-2023-7, ann-2021-13, cit-law]
+
+  - id: evt-benefit-retention
+    name: 税收优惠留存备查
+    group: 优惠与备案
+    taxTypes: [cit, iit]
+    differences:
+      - code: diff-benefit-retention
+        label: 自行判别、申报享受、资料留存备查
+        description: 现行税收优惠多数改为「自行判别、申报享受、相关资料留存备查」方式，企业无需事前审批，但资料的完整性直接决定优惠能否被认可。
+        policyIds: [cit-law, ann-2023-12]
+      - code: diff-benefit-choice
+        label: 多项优惠的选择适用
+        description: 企业所得税优惠存在不得叠加的情形（如高新技术企业与小型微利企业），应测算后择优适用并在申报表中体现选择。
+        policyIds: [cit-law, ann-2023-12]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A107040
+        lineLabel: 减免所得税优惠明细表
+      - taxType: iit
+        form: 个人所得税扣缴申报表
+        lineCode: 第1行
+        lineLabel: 工资、薪金所得（专项附加扣除）
+    accountingGuide:
+      - 建立优惠事项台账，逐项登记政策依据、享受金额与备查资料清单
+      - 留存备查资料应随年度汇算清缴资料一并归档
+      - 优惠条件发生变化的，应在变化当期停止享受并作相应调整
+    policyIds: [cit-law, ann-2023-12, ann-2023-7, iit-law]
+
+  - id: evt-six-tax-two-fee
+    name: 六税两费减半申报
+    group: 优惠与备案
+    taxTypes: [surcharge, stamp, property, resource]
+    differences:
+      - code: diff-six-tax-scope
+        label: 六税两费的适用范围
+        description: 减半征收范围包括资源税、城市维护建设税、房产税、城镇土地使用税、印花税（不含证券交易印花税）、耕地占用税和教育费附加、地方教育附加。
+        policyIds: [ann-2023-12]
+      - code: diff-six-tax-overlap
+        label: 与其他优惠的叠加
+        description: 「六税两费」减半优惠可与其他税收优惠叠加享受，但需在申报表减免性质代码中分别填报，避免重复减免。
+        policyIds: [ann-2023-12, stamp-law]
+    returnLines:
+      - taxType: surcharge
+        form: 财产和行为税纳税申报表
+        lineCode: 减免税明细
+        lineLabel: 减免性质代码及减免税额
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 减免税明细
+        lineLabel: 减免性质代码及减免税额
+    accountingGuide:
+      - 按减半后的金额计提：借 税金及附加，贷 应交税费—相关税种
+      - 减免税额在申报表减免税栏填报，会计上不确认政府补助
+      - 纳税人身份（小规模纳税人、小型微利企业、个体工商户）变化会影响适用资格
+    policyIds: [ann-2023-12, stamp-law, property-tax-interim]
+
+  # ===========================================================================
+  # 十二、租赁与持有
+  # ===========================================================================
+  - id: evt-operating-lease-income
+    name: 经营租赁收入
+    group: 租赁与持有
+    taxTypes: [vat, cit, stamp]
+    differences:
+      - code: diff-lease-income-timing
+        label: 租金收入的确认时点
+        description: 会计按租赁期直线法确认租金收入；增值税按合同约定付款日期或收到预收款时产生纳税义务；企业所得税按合同约定应付租金的日期确认收入。
+        policyIds: [cas-21-lease, vat-law-2024, cit-regulation]
+      - code: diff-lease-stamp
+        label: 财产租赁合同印花税
+        description: 财产租赁合同按租赁金额的千分之一计算印花税，税额不足一元的按一元贴花。
+        policyIds: [stamp-law, ann-2022-22]
+    returnLines:
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第1栏
+        lineLabel: 按适用税率计税销售额（不动产租赁9%）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: 第1行
+        lineLabel: 营业收入
+      - taxType: stamp
+        form: 财产和行为税纳税申报表（印花税税源明细表）
+        lineCode: 财产租赁合同
+        lineLabel: 财产租赁合同（租赁金额的千分之一）
+    accountingGuide:
+      - 收取租金：借 银行存款，贷 主营业务收入/其他业务收入、应交税费—应交增值税（销项税额）
+      - 预收租金：借 银行存款，贷 合同负债/预收账款、应交税费—应交增值税（销项税额）
+      - 出租房产的，同时申报房产税（从租计征）
+    policyIds: [cas-21-lease, vat-law-2024, cit-regulation, stamp-law, ann-2022-22]
+
+  - id: evt-lease-liability
+    name: 承租方使用权资产
+    group: 租赁与持有
+    taxTypes: [cit, vat]
+    differences:
+      - code: diff-lease-capitalization
+        label: 使用权资产与租赁负债的税会差异
+        description: 企业会计准则下承租人确认使用权资产并计提折旧、确认租赁负债利息；税法按租赁费支出均匀扣除，形成「先调增后调减」的暂时性差异，需逐年填报调整表。
+        policyIds: [cas-21-lease, cit-regulation]
+      - code: diff-lease-small-standard
+        label: 小企业会计准则的处理
+        description: 小企业会计准则下经营租赁不资本化，租金在租赁期内均匀计入费用，与税法口径基本一致，不产生该项差异。
+        policyIds: [small-enterprise-standard]
+    returnLines:
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105080
+        lineLabel: 资产折旧、摊销及纳税调整明细表
+      - taxType: vat
+        form: 增值税及附加税费申报表（一般纳税人适用）
+        lineCode: 第12栏
+        lineLabel: 进项税额（不动产租赁）
+    accountingGuide:
+      - 租赁期开始日：借 使用权资产、租赁负债—未确认融资费用，贷 租赁负债—租赁付款额
+      - 每期：借 财务费用—利息支出、管理费用—折旧费，贷 租赁负债—租赁付款额、使用权资产累计折旧
+      - 小企业会计准则下直接：借 管理费用—租赁费，贷 银行存款/预付账款
+    policyIds: [cas-21-lease, cit-regulation, small-enterprise-standard, vat-law-2024]
+
+  - id: evt-property-holding
+    name: 自有房产持有
+    group: 租赁与持有
+    taxTypes: [property, stamp, cit]
+    differences:
+      - code: diff-property-original-value
+        label: 房产原值的确定
+        description: 房产税从价计征以房产原值为基础，房产原值应包含与房屋不可分割的各种附属设备或一般不单独计算价值的配套设施。
+        policyIds: [property-tax-interim]
+      - code: diff-land-use-tax
+        label: 城镇土地使用税的并行申报
+        description: 自有房产占用的土地还需按实际占用面积申报城镇土地使用税，与房产税同属财产行为税，通常在同一张申报表合并申报。
+        policyIds: [urban-land-use-interim, ann-2023-12]
+    returnLines:
+      - taxType: property
+        form: 财产和行为税纳税申报表（房产税税源明细表）
+        lineCode: 从价计征
+        lineLabel: 房产税（从价计征）
+      - taxType: cit
+        form: 企业所得税年度纳税申报表（A类）
+        lineCode: A105080
+        lineLabel: 资产折旧、摊销及纳税调整明细表
+    accountingGuide:
+      - 计提：借 税金及附加—房产税、城镇土地使用税，贷 应交税费
+      - 房产折旧：借 管理费用—折旧费，贷 累计折旧
+      - 房产原值发生变化的，应在变更次月调整计税依据
+    policyIds: [property-tax-interim, urban-land-use-interim, ann-2023-12, cit-regulation]

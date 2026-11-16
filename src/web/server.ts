@@ -26,9 +26,15 @@ import { formatYuan, formatYuanGrouped } from '../core/money.ts';
 import { run } from '../pipeline.ts';
 import { exportToExcel } from '../export/voucher-excel.ts';
 import { summarizeVouchers } from '../ledger/voucher.ts';
+import { handleApi } from './api.ts';
+import { AUDIT_DIR } from '../app/commands.ts';
 
 const PUBLIC_DIR = join(PROJECT_ROOT, 'src', 'web', 'public');
-const WORK_DIR = join(PROJECT_ROOT, 'out', 'web-runs');
+// 上传暂存目录。默认放在 out/web-runs；
+// 用 ACCOUNTING_WORK_DIR 覆盖，便于容器部署、只读安装目录或沙盒环境。
+const WORK_DIR = process.env['ACCOUNTING_WORK_DIR'] !== undefined && process.env['ACCOUNTING_WORK_DIR'] !== ''
+  ? resolve(process.env['ACCOUNTING_WORK_DIR'])
+  : join(PROJECT_ROOT, 'out', 'web-runs');
 const MAX_BODY_BYTES = 60 * 1024 * 1024; // 60MB，base64 后约对应 45MB 原始文件
 
 /* ------------------------------------------------------------------ */
@@ -341,6 +347,9 @@ async function handleDownload(res: ServerResponse, runId: string): Promise<void>
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const path = url.pathname;
+
+  // 新增的业务接口统一交给 api.ts，避免这个路由函数继续膨胀
+  if (await handleApi(req, res, url, { workDir: WORK_DIR, auditDir: AUDIT_DIR })) return;
 
   if (req.method === 'POST' && path === '/api/process') {
     await handleProcess(req, res);

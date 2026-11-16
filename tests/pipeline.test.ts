@@ -9,6 +9,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
@@ -24,7 +25,9 @@ import {
   extractTaxRate,
 } from '../src/extract/contract.ts';
 
-const TMP_DIR = join(PROJECT_ROOT, 'out', '.test-tmp');
+// 用进程唯一的临时目录，而不是固定的 out/.test-tmp：
+// 固定路径在并发跑测试、或 out/ 被占用/只读时会互相踩踏。
+const TMP_DIR = mkdtempSync(join(PROJECT_ROOT, '.test-tmp-'));
 
 /* ------------------------------------------------------------------ */
 /* 测试数据构造                                                        */
