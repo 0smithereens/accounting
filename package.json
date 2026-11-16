@@ -27,5 +27,13 @@
     "@types/node": "^22.10.2",
     "jszip": "^3.10.2",
     "typescript": "^5.8.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0smithereens/accounting.git"
+  },
+  "homepage": "https://github.com/0smithereens/accounting#readme",
+  "bugs": {
+    "url": "https://github.com/0smithereens/accounting/issues"
   }
 }

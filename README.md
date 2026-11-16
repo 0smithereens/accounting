@@ -1,6 +1,6 @@
 # 会计自动化记账系统
 
-[![CI](https://github.com/your-org/accounting-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/accounting-automation/actions/workflows/ci.yml)
+[![CI](https://github.com/0smithereens/accounting/actions/workflows/ci.yml/badge.svg)](https://github.com/0smithereens/accounting/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)](https://nodejs.org/)
 [![Tests](https://img.shields.io/badge/tests-596%20passed-brightgreen.svg)](#测试)
